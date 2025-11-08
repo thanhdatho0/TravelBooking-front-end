@@ -5,7 +5,7 @@ import { faTiktok } from "@fortawesome/free-brands-svg-icons";
 import { faYoutube } from "@fortawesome/free-brands-svg-icons";
 import { faTelegram } from "@fortawesome/free-brands-svg-icons";
 
-const pageFooter = () => {
+const PageFooter = () => {
   const Collaborators = [
     "https://ik.imagekit.io/tvlk/image/imageResource/2019/05/20/1558339548088-c536c896b175cb38f99a31f5dd2a989a.png?tr=h-19,q-75,w-57",
     "https://ik.imagekit.io/tvlk/image/imageResource/2019/05/20/1558339578215-99466ea3d377ada2939bf2117df21b11.png?tr=h-19,q-75,w-57",
@@ -233,7 +233,7 @@ const pageFooter = () => {
           </div>
 
           <div>
-            <div className="mb-4!">
+            <div className="mb-10!">
               <h4 className="text-white font-semibold">Khác</h4>
               <div className="text-gray-300 flex flex-col gap-2 py-2! max-w-70">
                 <a
@@ -341,4 +341,4 @@ const pageFooter = () => {
   );
 };
 
-export default pageFooter;
+export default PageFooter;

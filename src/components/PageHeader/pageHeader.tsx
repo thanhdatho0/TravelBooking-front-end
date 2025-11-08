@@ -1,6 +1,23 @@
 import "./pageHeader.css";
+import { useState } from "react";
+import AuthFormWrapper from "../AuthenticationForm/AuthFormWrapper";
 
-const pageHeader = () => {
+const PageHeader = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const openModal = () => {
+    setIsClosing(false);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsModalOpen(false);
+      setIsClosing(false);
+    }, 250);
+  };
   return (
     <>
       <header className="h-auto w-full bg-white items-center shadow-md flex justify-between px-10! py-1! sticky top-0 z-50">
@@ -11,6 +28,7 @@ const pageHeader = () => {
         <div className="authen-btn flex gap-2 items-center">
           <button
             type="button"
+            onClick={openModal}
             className="login-btn flex gap-2 items-center border border-solid rounded-sm border-sky-600 p-1.5! hover:bg-gray-200"
           >
             <svg
@@ -31,14 +49,22 @@ const pageHeader = () => {
           </button>
           <button
             type="button"
+            onClick={openModal}
             className="signup-btn border border-solid rounded-sm border-sky-600 p-2! bg-sky-600 text-white hover:bg-sky-700 flex items-center hover:border-sky-700"
           >
             <span className="signup-txt text-sm font-semibold">Đăng Ký</span>
           </button>
         </div>
       </header>
+      {/* Modal được điều khiển hoàn toàn từ header */}
+      {/* TRUYỀN ĐỦ 3 PROPS */}
+      <AuthFormWrapper
+        isOpen={isModalOpen}
+        isClosing={isClosing}
+        onClose={closeModal}
+      />
     </>
   );
 };
 
-export default pageHeader;
+export default PageHeader;
