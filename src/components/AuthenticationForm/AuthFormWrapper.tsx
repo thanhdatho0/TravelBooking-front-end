@@ -1,6 +1,10 @@
 // components/AuthenticationForm/mainForm.tsx
 import { X } from "lucide-react";
 import LoginOrCreate from "./LoginOrCreate";
+import LoginWithEmail from "./LoginWithEmail";
+import EmailConfirm from "./EmailConfirm";
+import SignUpForm from "./SignUpForm";
+import FillInfo from "./FillInfo";
 
 type AuthFormWrapperProps = {
   isOpen: boolean;
@@ -63,11 +67,15 @@ const AuthFormWrapper = ({
 
               <div className="absolute bottom-4 left-0 right-0 text-center">
                 <h4 className="text-lg font-semibold text-gray-800">
-                  Đăng nhập hoặc tạo tài khoản mới!
+                  Chúng tôi có một ưu đãi vô cùng hấp dẫn!
                 </h4>
               </div>
             </div>
-            <LoginOrCreate />
+            {/* <LoginOrCreate /> */}
+            {/* <LoginWithEmail /> */}
+            {/* <EmailConfirm /> */}
+            {/* <SignUpForm /> */}
+            <FillInfo />
           </div>
         </div>
       )}

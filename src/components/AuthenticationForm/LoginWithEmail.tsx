@@ -1,29 +1,30 @@
-import { faFacebook, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { validateEmail } from "../../utils/validateEmail";
+import { validatePassword } from "../../utils/validatePassword";
 import PolicyInsurence from "./PolicyInsurence";
+import BackBtn from "./BackBtn";
 import FormInput from "./FormInput";
 
-const LoginOrCreate = () => {
+const LoginWithEmail = () => {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-
   const validateForm = (): boolean => {
     const emailResult = validateEmail(email);
+    const passwordResult = validatePassword(password);
 
     // Nếu có lỗi → không cho submit
-    if (!emailResult.isValid) {
+    if (!emailResult.isValid || !passwordResult.isValid) {
       return false;
     }
     return true;
   };
 
+  // Xử lý submit
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // Ngăn reload trang
     setSubmitAttempted(true);
-
     if (!validateForm()) {
       return; // Dừng lại nếu validate fail
     }
@@ -32,12 +33,11 @@ const LoginOrCreate = () => {
 
     // Giả lập API call
     setTimeout(() => {
-      console.log("Đăng nhập thành công:", { email });
+      console.log("Đăng nhập thành công:", { email, password });
       alert("Đăng nhập thành công!");
       setIsSubmitting(false);
     }, 1000);
   };
-
   return (
     <div className="w-[80%] mx-auto!">
       <form onSubmit={handleSubmit} className="my-2!">
@@ -52,10 +52,22 @@ const LoginOrCreate = () => {
             placeholder="you@example.com"
           />
         </div>
+        <div>
+          <FormInput
+            type="password"
+            label="Mật khẩu"
+            value={password}
+            onChange={setPassword}
+            required
+            showStrength
+            showEmptyErrorOnSubmit={submitAttempted}
+          />
+        </div>
+
         <button
           type="submit"
           disabled={isSubmitting}
-          className={`text-white text-md font-semibold text-center w-full py-3.5! my-8! rounded-full shadow-md cursor-pointer transition-all ${
+          className={`text-white text-md font-semibold text-center w-full py-3.5! my-2! rounded-full shadow-md cursor-pointer transition-all ${
             isSubmitting
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-sky-600 hover:shadow-lg hover:bg-sky-800"
@@ -79,31 +91,17 @@ const LoginOrCreate = () => {
               />
             </svg>
           ) : (
-            "Tiếp tục"
+            "Đăng nhập"
           )}
         </button>
+        <button className="text-sky-600 text-md font-semibold text-center w-full py-3.5! my-2! rounded-full bg-sky-100 shadow-md cursor-pointer hover:shadow-lg hover:bg-sky-200 transition-shadow">
+          Quên mật khẩu
+        </button>
       </form>
-
-      <div className="relative mb-8!">
-        <hr className="border-gray-300" />
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4! text-sm text-gray-500 font-medium">
-          Hoặc
-        </span>
-      </div>
-      <div className="flex items-center gap-4 justify-between my-4!">
-        <div className="flex w-full justify-around items-center bg-white rounded-full border border-gray-200 shadow-md p-2! cursor-pointer hover:shadow-lg transition-shadow px-5!">
-          <FontAwesomeIcon icon={faGoogle} className="border-r pr-2!" />
-          <span>Google</span>
-        </div>
-        <div className="flex w-full justify-around items-center bg-white rounded-full border border-gray-200 shadow-md p-2! cursor-pointer hover:shadow-lg transition-shadow px-5!">
-          <FontAwesomeIcon icon={faFacebook} className="border-r pr-2!" />
-          <span>Facebook</span>
-        </div>
-      </div>
-
+      <BackBtn />
       <PolicyInsurence />
     </div>
   );
 };
 
-export default LoginOrCreate;
+export default LoginWithEmail;
