@@ -1,15 +1,36 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { validateEmail } from "../../utils/validateEmail";
 import { validatePassword } from "../../utils/validatePassword";
 import PolicyInsurence from "./PolicyInsurence";
 import BackBtn from "./BackBtn";
 import FormInput from "./FormInput";
 
-const LoginWithEmail = () => {
-  const [email, setEmail] = useState("");
+type LoginWithEmailProps = {
+  prefilledEmail: string;
+  onBack?: () => void;
+  onLoginSuccess: () => void;
+};
+
+const LoginWithEmail = ({
+  prefilledEmail,
+  onBack,
+  onLoginSuccess,
+}: LoginWithEmailProps) => {
+  const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    // Đặt isMounted = true khi component mount
+    isMounted.current = true;
+    return () => {
+      // Đặt isMounted = false khi component unmount
+      isMounted.current = false;
+    };
+  }, []);
+
   const validateForm = (): boolean => {
     const emailResult = validateEmail(email);
     const passwordResult = validatePassword(password);
@@ -34,8 +55,10 @@ const LoginWithEmail = () => {
     // Giả lập API call
     setTimeout(() => {
       console.log("Đăng nhập thành công:", { email, password });
-      alert("Đăng nhập thành công!");
-      setIsSubmitting(false);
+      if (isMounted.current) {
+        setIsSubmitting(false); // Tắt spinner
+        onLoginSuccess();
+      }
     }, 1000);
   };
   return (
@@ -50,6 +73,8 @@ const LoginWithEmail = () => {
             required
             showEmptyErrorOnSubmit={submitAttempted}
             placeholder="you@example.com"
+            className="mb-5!"
+            disabled
           />
         </div>
         <div>
@@ -59,8 +84,8 @@ const LoginWithEmail = () => {
             value={password}
             onChange={setPassword}
             required
-            showStrength
             showEmptyErrorOnSubmit={submitAttempted}
+            className="mb-5!"
           />
         </div>
 
@@ -98,7 +123,7 @@ const LoginWithEmail = () => {
           Quên mật khẩu
         </button>
       </form>
-      <BackBtn />
+      <BackBtn onClick={onBack} className="hover:cursor-pointer" />
       <PolicyInsurence />
     </div>
   );

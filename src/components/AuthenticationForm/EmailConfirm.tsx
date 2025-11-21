@@ -1,10 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
 import BackBtn from "./BackBtn";
 
-const EmailConfirm = () => {
+type EmailConfirmProps = {
+  email: string; // ← Thêm dòng này
+  onBack?: () => void; // ← Thêm dòng này (để BackBtn hoạt động)
+  onSuccess?: () => void;
+};
+
+const EmailConfirm = ({ email, onBack, onSuccess }: EmailConfirmProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [pin, setPin] = useState<string[]>(["", "", "", ""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const isComplete = pin.every((d) => d !== "");
+  const [countdown, setCountdown] = useState(30); // Bắt đầu từ 30s
+  const [canResend, setCanResend] = useState(false); // Để kiểm soát có thể resend không
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d?$/.test(value)) return; // Chỉ cho phép 1 số hoặc rỗng
@@ -42,27 +52,84 @@ const EmailConfirm = () => {
     inputRefs.current[focusIndex]?.focus();
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (isSubmitting) return;
+
+    const code = pin.join(""); // ← THÊM DÒNG NÀY để lấy mã PIN đầy đủ
+    if (code.length !== 4) return; // ← THÊM DÒNG NÀY để tránh submit khi chưa đủ
 
     setIsSubmitting(true);
 
-    // Giả lập API call
-    setTimeout(() => {
-      alert("Đăng nhập thành công!");
+    try {
+      const res = await fetch("https://localhost:7228/api/Auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Email: email, Code: code }),
+      });
+
+      if (res.ok) {
+        alert("Xác thực thành công!");
+        onSuccess?.();
+      } else {
+        const errorData = await res.json();
+        alert(errorData.message || "Xác thực thất bại. Vui lòng thử lại.");
+      }
+    } catch (err) {
+      console.error("Lỗi gọi API:", err);
+      alert("Lỗi kết nối. Vui lòng kiểm tra mạng.");
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   useEffect(() => {
     inputRefs.current = inputRefs.current.slice(0, 4);
+    inputRefs.current[0]?.focus();
   }, []);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setCanResend(true);
+    }
+  }, [countdown]);
+
+  const handleResend = async () => {
+    if (!canResend) return;
+
+    setIsResending(true); // Optional: disable toàn bộ nếu cần
+
+    try {
+      const res = await fetch("https://localhost:7228/api/Auth/pre-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Email: email }),
+      });
+
+      if (res.ok) {
+        alert("Đã gửi lại mã xác minh!");
+        setCountdown(30); // Reset countdown
+        setCanResend(false);
+      } else {
+        alert("Không thể gửi lại mã. Vui lòng thử lại.");
+      }
+    } catch (err) {
+      alert("Lỗi kết nối.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <div className="w-[80%] mx-auto!">
       <form onSubmit={handleSubmit} className="my-2!">
         <div>
           <label htmlFor="confirm-pinput" className="my-2!">
-            Vui lòng nhập mã xác minh chúng tôi đã gửi tới thanhdatho0@gmail.com
+            Vui lòng nhập mã xác minh chúng tôi đã gửi tới {email}
           </label>
         </div>
 
@@ -99,7 +166,7 @@ const EmailConfirm = () => {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isComplete}
           className={`text-white text-md font-semibold text-center w-full py-3.5! my-2! rounded-full shadow-md cursor-pointer transition-all ${
             isSubmitting
               ? "bg-gray-400 cursor-not-allowed"
@@ -127,12 +194,23 @@ const EmailConfirm = () => {
             "Xác thực"
           )}
         </button>
-        <button className="text-sky-600 text-md font-semibold text-center w-full py-3.5! my-2! rounded-full bg-sky-100 shadow-md cursor-pointer hover:shadow-lg hover:bg-sky-200 transition-shadow">
-          Đợi 0s gửi lại mã xác minh
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={!canResend || isResending}
+          className={`text-md font-semibold text-center w-full py-3.5! my-2! rounded-full shadow-md transition-all ${
+            !canResend
+              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+              : "bg-sky-100 text-sky-600 hover:bg-sky-200 hover:shadow-lg cursor-pointer"
+          }`}
+        >
+          {canResend
+            ? "Gửi lại mã xác minh"
+            : `Đợi ${countdown}s gửi lại mã xác minh`}
         </button>
       </form>
 
-      <BackBtn />
+      <BackBtn onClick={onBack} />
     </div>
   );
 };

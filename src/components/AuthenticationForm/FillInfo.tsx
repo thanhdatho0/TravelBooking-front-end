@@ -261,7 +261,7 @@ const FillInfo = () => {
         </button>
         <button
           disabled={true}
-          className="text-white text-md font-semibold text-center w-full py-3.5! mt-5! rounded-full bg-sky-600 shadow-md cursor-pointer hover:shadow-lg hover:bg-sky-800 transition-shadow"
+          className="text-white text-md font-semibold text-center w-full py-3.5! mt-2! rounded-full bg-sky-600 shadow-md cursor-pointer hover:shadow-lg hover:bg-sky-800 transition-shadow"
         >
           Bỏ qua bước này
         </button>

@@ -1,104 +1,157 @@
+// components/AuthenticationForm/LoginOrCreate.tsx
 import { faFacebook, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useState } from "react";
-import { validateEmail } from "../../utils/validateEmail";
+import { useState, useEffect } from "react";
 import PolicyInsurence from "./PolicyInsurence";
 import FormInput from "./FormInput";
 
-const LoginOrCreate = () => {
+type LoginOrCreateProps = {
+  onEmailConfirmed: (email: string) => void; // Email đã tồn tại → chuyển LoginWithEmail
+  onContinueToConfirm?: (email: string) => void; // Email mới → nhấn Tiếp tục → EmailConfirm
+};
+
+const LoginOrCreate = ({
+  onEmailConfirmed,
+  onContinueToConfirm,
+}: LoginOrCreateProps) => {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [buttonState, setButtonState] = useState<
+    "disabled" | "checking" | "ready"
+  >("disabled");
 
-  const validateForm = (): boolean => {
-    const emailResult = validateEmail(email);
-
-    // Nếu có lỗi → không cho submit
-    if (!emailResult.isValid) {
-      return false;
+  // Theo dõi kết quả kiểm tra email từ FormInput
+  const handleEmailExists = (exists: boolean, currentEmail: string) => {
+    if (exists && currentEmail.trim()) {
+      // Email đã tồn tại → tự động chuyển sang LoginWithEmail
+      onEmailConfirmed(currentEmail.trim());
+    } else if (!exists && currentEmail.trim()) {
+      // Email chưa tồn tại → bật nút "Tiếp tục"
+      setButtonState("ready");
     }
-    return true;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Ngăn reload trang
-    setSubmitAttempted(true);
-
-    if (!validateForm()) {
-      return; // Dừng lại nếu validate fail
-    }
+  const handleContinue = async () => {
+    if (buttonState !== "ready" || !email.trim()) return;
 
     setIsSubmitting(true);
 
-    // Giả lập API call
-    setTimeout(() => {
-      console.log("Đăng nhập thành công:", { email });
-      alert("Đăng nhập thành công!");
+    try {
+      const res = await fetch("https://localhost:7228/api/Auth/pre-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Email: email.trim() }),
+      });
+
+      if (res.ok) {
+        onContinueToConfirm?.(email.trim());
+      } else {
+        const errorData = await res.json();
+        alert(
+          errorData.message || "Không thể gửi mã xác minh. Vui lòng thử lại."
+        );
+      }
+    } catch (err) {
+      console.error("Lỗi gọi API:", err);
+      alert("Lỗi kết nối. Vui lòng kiểm tra mạng.");
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
+
+  // Khi người dùng gõ email
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+
+    // Nếu email hợp lệ → chuyển sang trạng thái checking (FormInput sẽ tự gọi API)
+    if (value.trim() && /^\S+@\S+\.\S+$/.test(value.trim())) {
+      setButtonState("checking");
+    } else {
+      setButtonState("disabled");
+    }
+  };
+
+  // Reset khi người dùng xóa/sửa email sai
+  useEffect(() => {
+    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setButtonState("disabled");
+    }
+  }, [email]);
 
   return (
     <div className="w-[80%] mx-auto!">
-      <form onSubmit={handleSubmit} className="my-2!">
-        <div>
-          <FormInput
-            type="email"
-            label="Email"
-            value={email}
-            onChange={setEmail}
-            required
-            showEmptyErrorOnSubmit={submitAttempted}
-            placeholder="you@example.com"
-          />
-        </div>
+      <div className="my-2!">
+        <FormInput
+          type="email"
+          label="Email"
+          value={email}
+          onChange={handleEmailChange}
+          required
+          placeholder="yourname@example.com"
+          onEmailExists={handleEmailExists} // ← Quan trọng: nhận kết quả kiểm tra tồn tại
+        />
+
+        {/* Nút Tiếp tục - siêu mượt */}
         <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`text-white text-md font-semibold text-center w-full py-3.5! my-8! rounded-full shadow-md cursor-pointer transition-all ${
-            isSubmitting
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-sky-600 hover:shadow-lg hover:bg-sky-800"
-          }`}
+          type="button"
+          onClick={handleContinue}
+          disabled={buttonState !== "ready" || isSubmitting}
+          className={`relative mt-8! mb-10! w-full py-3.5! rounded-full text-white font-semibold text-md transition-all duration-300 flex items-center justify-center gap-3 shadow-md
+            ${
+              buttonState === "disabled" || isSubmitting
+                ? "bg-gray-400 cursor-not-allowed"
+                : buttonState === "checking"
+                ? "bg-sky-500 cursor-wait"
+                : "bg-sky-600 hover:bg-sky-700 hover:shadow-lg cursor-pointer"
+            }`}
         >
-          {isSubmitting ? (
+          {/* Spinner khi đang kiểm tra */}
+          {(buttonState === "checking" || isSubmitting) && (
             <svg
-              aria-hidden="true"
-              className="w-8 h-8 m-auto! text-gray-200 animate-spin dark:text-gray-600 fill-sky-600"
-              viewBox="0 0 100 101"
+              className="w-5 h-5 animate-spin"
+              viewBox="0 0 24 24"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                fill="currentColor"
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                className="opacity-25"
               />
               <path
-                d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                fill="currentFill"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                className="opacity-75"
               />
             </svg>
-          ) : (
-            "Tiếp tục"
           )}
-        </button>
-      </form>
 
-      <div className="relative mb-8!">
+          <span>
+            {buttonState === "checking" ? "Đang kiểm tra..." : "Tiếp tục"}
+          </span>
+        </button>
+      </div>
+
+      {/* Divider "Hoặc" */}
+      <div className="relative my-8!">
         <hr className="border-gray-300" />
         <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4! text-sm text-gray-500 font-medium">
           Hoặc
         </span>
       </div>
-      <div className="flex items-center gap-4 justify-between my-4!">
-        <div className="flex w-full justify-around items-center bg-white rounded-full border border-gray-200 shadow-md p-2! cursor-pointer hover:shadow-lg transition-shadow px-5!">
-          <FontAwesomeIcon icon={faGoogle} className="border-r pr-2!" />
-          <span>Google</span>
-        </div>
-        <div className="flex w-full justify-around items-center bg-white rounded-full border border-gray-200 shadow-md p-2! cursor-pointer hover:shadow-lg transition-shadow px-5!">
-          <FontAwesomeIcon icon={faFacebook} className="border-r pr-2!" />
-          <span>Facebook</span>
-        </div>
+
+      {/* Login Google & Facebook */}
+      <div className="flex gap-4 my-4!">
+        <button className="flex-1 flex items-center justify-center gap-3 bg-white rounded-full border border-gray-200 shadow-md py-3! hover:shadow-lg transition-shadow">
+          <FontAwesomeIcon icon={faGoogle} className="text-red-500" />
+          <span className="font-medium">Google</span>
+        </button>
+        <button className="flex-1 flex items-center justify-center gap-3 bg-white rounded-full border border-gray-200 shadow-md py-3! hover:shadow-lg transition-shadow">
+          <FontAwesomeIcon icon={faFacebook} className="text-blue-600" />
+          <span className="font-medium">Facebook</span>
+        </button>
       </div>
 
       <PolicyInsurence />

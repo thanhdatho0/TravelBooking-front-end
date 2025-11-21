@@ -4,24 +4,39 @@ import { validateEmail } from "../../utils/validateEmail";
 import { validatePassword } from "../../utils/validatePassword";
 import BackBtn from "./BackBtn";
 
-const SignUpForm = () => {
-  const [email, setEmail] = useState("");
+type SignUpFormProps = {
+  prefilledEmail: string;
+  onBack?: () => void;
+  onSuccess?: () => void;
+  onSignUpSuccess: () => void;
+};
+
+const SignUpForm = ({
+  prefilledEmail,
+  onBack,
+  onSuccess,
+  onSignUpSuccess,
+}: SignUpFormProps) => {
+  const [email, setEmail] = useState(prefilledEmail);
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+
   const validateForm = (): boolean => {
     const emailResult = validateEmail(email);
     const passwordResult = validatePassword(password);
+    const fullNameValid = fullName.trim().length >= 2;
 
     // Nếu có lỗi → không cho submit
-    if (!emailResult.isValid || !passwordResult.isValid) {
+    if (!emailResult.isValid || !passwordResult.isValid || !fullNameValid) {
       return false;
     }
     return true;
   };
 
   // Xử lý submit
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // Ngăn reload trang
     setSubmitAttempted(true);
     if (!validateForm()) {
@@ -31,11 +46,32 @@ const SignUpForm = () => {
     setIsSubmitting(true);
 
     // Giả lập API call
-    setTimeout(() => {
-      console.log("Đăng nhập thành công:", { email, password });
-      alert("Đăng nhập thành công!");
+    try {
+      const res = await fetch("https://localhost:7228/api/Auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName, // Giả sử API cần field này
+          email,
+          password,
+        }),
+      });
+
+      if (res.ok) {
+        alert("Đăng ký thành công!");
+        onSuccess?.();
+        onSignUpSuccess();
+        // Có thể thêm chuyển hướng hoặc đóng modal nếu cần
+      } else {
+        const errorData = await res.json();
+        alert(errorData.message || "Đăng ký thất bại. Vui lòng thử lại.");
+      }
+    } catch (err) {
+      console.error("Lỗi gọi API:", err);
+      alert("Lỗi kết nối. Vui lòng kiểm tra mạng.");
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
   return (
     <div className="w-[80%] mx-auto!">
@@ -49,6 +85,7 @@ const SignUpForm = () => {
             value={email}
             onChange={setEmail}
             required
+            disabled
             showEmptyErrorOnSubmit={submitAttempted}
           />
         </div>
@@ -57,6 +94,8 @@ const SignUpForm = () => {
             label="Họ và tên"
             type="text"
             placeholder="Nhập họ và tên của bạn"
+            value={fullName}
+            onChange={setFullName}
             required
             showEmptyErrorOnSubmit={submitAttempted}
           />
@@ -110,7 +149,7 @@ const SignUpForm = () => {
         </button>
       </form>
 
-      <BackBtn />
+      <BackBtn onClick={onBack} />
     </div>
   );
 };

@@ -2,7 +2,7 @@ const PolicyInsurence = () => {
   return (
     <div className="my-8!">
       <p className="text-sm text-center">
-        Bằng cách tiếp tục, bạn đồng ý với
+        Bằng cách tiếp tục, bạn đồng ý với{" "}
         <a href="#" className="text-sky-600">
           Điều khoản và Điều kiện
         </a>{" "}

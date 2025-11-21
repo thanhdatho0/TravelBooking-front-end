@@ -1,4 +1,9 @@
-const BackBtn = () => {
+type BackBtnProps = {
+  onClick?: () => void;
+  className?: string;
+};
+
+const BackBtn = ({ onClick, className = "" }: BackBtnProps) => {
   return (
     <div className="back-btn flex text-sky-600 w-full mx-auto items-center justify-center gap-2 hover:cursor-pointer my-8!">
       <svg
@@ -15,7 +20,7 @@ const BackBtn = () => {
           d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
         />
       </svg>
-      <button className="hover:cursor-pointer">Quay lại</button>
+      <button onClick={onClick} className={className}>Quay lại</button>
     </div>
   );
 };

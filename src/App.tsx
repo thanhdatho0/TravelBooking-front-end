@@ -1,8 +1,8 @@
-import PageHeader from "./components/PageHeader/PageHeader";
+import PageHeader from "./components/PageHeader/pageHeader";
 import "./App.css";
-import Slider from "./components/Slider/Slider";
-import PageBody from "./components/PageBody/PageBody";
-import PageFooter from "./components/PageFooter/PageFooter";
+import Slider from "./components/Slider/slider";
+import PageBody from "./components/PageBody/pageBody";
+import PageFooter from "./components/PageFooter/pageFooter";
 
 function App() {
   return (
