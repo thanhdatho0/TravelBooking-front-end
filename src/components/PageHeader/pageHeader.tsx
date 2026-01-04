@@ -1,5 +1,6 @@
 import "./pageHeader.css";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import AuthFormWrapper from "../AuthenticationForm/AuthFormWrapper";
 import { User } from "lucide-react";
 
@@ -22,20 +23,30 @@ const PageHeader = () => {
   };
 
   const handleAuthSuccess = () => {
-    closeModal(); // Tắt form
-    setIsLoggedIn(true); // Đặt trạng thái đã đăng nhập
+    closeModal();
+    setIsLoggedIn(true);
   };
 
   return (
     <>
       <header className="h-auto w-full bg-white items-center shadow-md flex justify-between px-10! py-1! sticky top-0 z-50">
-        <img
-          src="https://d1785e74lyxkqq.cloudfront.net/_next/static/v4.6.0/9/97f3e7a54e9c6987283b78e016664776.svg"
-          alt=""
-        />
+        <Link
+          to="/"
+          className="shrink-0"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Về trang chủ"
+          title="Về trang chủ"
+        >
+          <img
+            src="https://d1785e74lyxkqq.cloudfront.net/_next/static/v4.6.0/9/97f3e7a54e9c6987283b78e016664776.svg"
+            alt="Traveloka"
+            className="h-8 cursor-pointer select-none"
+            draggable={false}
+          />
+        </Link>
+
         <div className="authen-btn flex gap-2 items-center">
           {isLoggedIn ? (
-            // HIỂN THỊ KHI ĐÃ ĐĂNG NHẬP
             <button
               type="button"
               className="user-icon-btn p-2! rounded-full border border-gray-300 hover:bg-gray-100 transition"
@@ -44,14 +55,12 @@ const PageHeader = () => {
               <User size={24} className="text-sky-600" />
             </button>
           ) : (
-            // HIỂN THỊ KHI CHƯA ĐĂNG NHẬP
             <>
               <button
                 type="button"
                 onClick={openModal}
                 className="login-btn flex gap-2 items-center border border-solid rounded-sm border-sky-600 p-1.5! hover:bg-gray-200"
               >
-                {/* SVG icon login */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -70,6 +79,7 @@ const PageHeader = () => {
                   Đăng Nhập
                 </span>
               </button>
+
               <button
                 type="button"
                 onClick={openModal}
@@ -83,8 +93,7 @@ const PageHeader = () => {
           )}
         </div>
       </header>
-      {/* Modal được điều khiển hoàn toàn từ header */}
-      {/* TRUYỀN ĐỦ 3 PROPS */}
+
       <AuthFormWrapper
         key={isModalOpen ? "open" : "closed"}
         isOpen={isModalOpen}

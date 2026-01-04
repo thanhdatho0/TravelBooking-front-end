@@ -23,13 +23,26 @@ export type AccomSummaryDto = {
   price: number; // decimal -> number khi ra JSON
 };
 
-// PagedQuery + AccomSearchRequest đều là query string
-export async function getTop8Accommodations() {
-  const res = await api.get<PagedResult<AccomSummaryDto>>(
-    "/api/Accommodation",
-    {
-      params: { page: 1, pageSize: 8 },
-    }
-  );
-  return res.data.items;
+function accomEndpoint() {
+  const base = (api.defaults.baseURL ?? "").replace(/\/+$/, "");
+  // Nếu baseURL đã là ".../api" thì chỉ cần "/Accommodation"
+  if (/\/api$/i.test(base)) return "/Accommodation";
+  // Nếu baseURL chỉ là "http://localhost:5252" thì cần "/api/Accommodation"
+  return "/api/Accommodation";
+}
+
+export async function getTop8Accommodations(
+  q?: string
+): Promise<AccomSummaryDto[]> {
+  const res = await api.get<PagedResult<AccomSummaryDto>>(accomEndpoint(), {
+    params: {
+      page: 1,
+      pageSize: 10,
+      sortBy: "rating",
+      desc: true,
+      q: q && q.trim() ? q.trim() : undefined, // map vào request.Q
+    },
+  });
+
+  return res.data.items ?? [];
 }
