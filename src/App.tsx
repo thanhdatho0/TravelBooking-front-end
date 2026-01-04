@@ -6,10 +6,12 @@ import Slider from "./components/Slider/slider";
 import PageBody from "./components/PageBody/pageBody";
 import PageFooter from "./components/PageFooter/pageFooter";
 import AccommodationDetailPage from "./pages/AccommodationDetailPage";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <PageHeader />
 
       {/* Container căn giữa cho toàn bộ nội dung page */}

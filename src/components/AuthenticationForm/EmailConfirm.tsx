@@ -1,218 +1,83 @@
-import React, { useState, useRef, useEffect } from "react";
-import BackBtn from "./BackBtn";
+// components/AuthenticationForm/EmailConfirm.tsx
+import { useState } from "react";
+import { preRegister, verifyEmail } from "../../api/auth";
 
-type EmailConfirmProps = {
-  email: string; // ← Thêm dòng này
-  onBack?: () => void; // ← Thêm dòng này (để BackBtn hoạt động)
-  onSuccess?: () => void;
-};
+export default function EmailConfirm({
+  email,
+  onBack,
+  onSuccess,
+}: {
+  email: string;
+  onBack: () => void;
+  onSuccess: () => void;
+}) {
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-const EmailConfirm = ({ email, onBack, onSuccess }: EmailConfirmProps) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isResending, setIsResending] = useState(false);
-  const [pin, setPin] = useState<string[]>(["", "", "", ""]);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const isComplete = pin.every((d) => d !== "");
-  const [countdown, setCountdown] = useState(30); // Bắt đầu từ 30s
-  const [canResend, setCanResend] = useState(false); // Để kiểm soát có thể resend không
-
-  const handleChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return; // Chỉ cho phép 1 số hoặc rỗng
-
-    const newPin = [...pin];
-    newPin[index] = value;
-    setPin(newPin);
-
-    // Tự động focus ô tiếp theo nếu có
-    if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (e.key === "Backspace" && !pin[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
-      .slice(0, 4);
-    const newPin = pastedData.padEnd(4, "").split("").slice(0, 4);
-    setPin(newPin);
-    // Focus ô cuối cùng có dữ liệu
-    const lastIndex = newPin.findIndex((d) => d === "") - 1;
-    const focusIndex = lastIndex >= 0 ? lastIndex : 3;
-    inputRefs.current[focusIndex]?.focus();
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (isSubmitting) return;
-
-    const code = pin.join(""); // ← THÊM DÒNG NÀY để lấy mã PIN đầy đủ
-    if (code.length !== 4) return; // ← THÊM DÒNG NÀY để tránh submit khi chưa đủ
-
-    setIsSubmitting(true);
-
+  const submit = async () => {
     try {
-      const res = await fetch("https://localhost:7228/api/Auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Email: email, Code: code }),
-      });
-
-      if (res.ok) {
-        alert("Xác thực thành công!");
-        onSuccess?.();
-      } else {
-        const errorData = await res.json();
-        alert(errorData.message || "Xác thực thất bại. Vui lòng thử lại.");
-      }
-    } catch (err) {
-      console.error("Lỗi gọi API:", err);
-      alert("Lỗi kết nối. Vui lòng kiểm tra mạng.");
+      setErr(null);
+      setLoading(true);
+      await verifyEmail(email, code.trim());
+      onSuccess();
+    } catch (ex: any) {
+      setErr(ex?.response?.data ?? ex?.message ?? "OTP không đúng");
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    inputRefs.current = inputRefs.current.slice(0, 4);
-    inputRefs.current[0]?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
-    }
-  }, [countdown]);
-
-  const handleResend = async () => {
-    if (!canResend) return;
-
-    setIsResending(true); // Optional: disable toàn bộ nếu cần
-
+  const resend = async () => {
     try {
-      const res = await fetch("https://localhost:7228/api/Auth/pre-register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Email: email }),
-      });
-
-      if (res.ok) {
-        alert("Đã gửi lại mã xác minh!");
-        setCountdown(30); // Reset countdown
-        setCanResend(false);
-      } else {
-        alert("Không thể gửi lại mã. Vui lòng thử lại.");
-      }
-    } catch (err) {
-      alert("Lỗi kết nối.");
-    } finally {
-      setIsResending(false);
+      setErr(null);
+      await preRegister(email);
+    } catch (ex: any) {
+      setErr(
+        ex?.response?.data?.message ?? ex?.message ?? "Không thể gửi lại mã"
+      );
     }
   };
 
   return (
-    <div className="w-[80%] mx-auto!">
-      <form onSubmit={handleSubmit} className="my-2!">
-        <div>
-          <label htmlFor="confirm-pinput" className="my-2!">
-            Vui lòng nhập mã xác minh chúng tôi đã gửi tới {email}
-          </label>
+    <div className="p-6">
+      <button className="text-sky-700 font-bold" onClick={onBack}>
+        ← Quay lại
+      </button>
+
+      <div className="mt-3 text-sm text-slate-600">
+        Nhập mã xác thực đã gửi tới: <b>{email}</b>
+      </div>
+
+      <input
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        placeholder="Nhập mã OTP (4 số)"
+        className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-sky-200"
+      />
+
+      {err ? (
+        <div className="mt-3 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
+          {String(err)}
         </div>
+      ) : null}
 
-        <div className="flex gap-5 justify-center my-10!">
-          {pin.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => {
-                inputRefs.current[index] = el;
-              }}
-              type="text"
-              name="confirm-pinput"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              onPaste={handlePaste}
-              className={`
-            w-14 h-14 
-            text-center text-2xl font-semibold
-            border-2 rounded-lg
-            transition-all duration-200
-            focus:outline-none focus:ring-2 focus:ring-sky-600 focus:border-sky-600
-            ${digit ? "border-sky-600" : "border-gray-300"}
-            ${digit ? "text-gray-900" : "text-gray-400"}
-            caret-transparent
-            focus:caret-transparent
-          `}
-              placeholder="-"
-            />
-          ))}
-        </div>
+      <button
+        type="button"
+        onClick={submit}
+        disabled={loading}
+        className="mt-4 w-full rounded-xl bg-sky-600 text-white font-bold py-3 hover:bg-sky-700 disabled:opacity-60"
+      >
+        {loading ? "Đang xác thực..." : "Xác thực"}
+      </button>
 
-        <button
-          type="submit"
-          disabled={isSubmitting || !isComplete}
-          className={`text-white text-md font-semibold text-center w-full py-3.5! my-2! rounded-full shadow-md cursor-pointer transition-all ${
-            isSubmitting
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-sky-600 hover:shadow-lg hover:bg-sky-800"
-          }`}
-        >
-          {isSubmitting ? (
-            <svg
-              aria-hidden="true"
-              className="w-8 h-8 m-auto! text-gray-200 animate-spin dark:text-gray-600 fill-sky-600"
-              viewBox="0 0 100 101"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                fill="currentColor"
-              />
-              <path
-                d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                fill="currentFill"
-              />
-            </svg>
-          ) : (
-            "Xác thực"
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={!canResend || isResending}
-          className={`text-md font-semibold text-center w-full py-3.5! my-2! rounded-full shadow-md transition-all ${
-            !canResend
-              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-              : "bg-sky-100 text-sky-600 hover:bg-sky-200 hover:shadow-lg cursor-pointer"
-          }`}
-        >
-          {canResend
-            ? "Gửi lại mã xác minh"
-            : `Đợi ${countdown}s gửi lại mã xác minh`}
-        </button>
-      </form>
-
-      <BackBtn onClick={onBack} />
+      <button
+        type="button"
+        onClick={resend}
+        className="mt-3 w-full rounded-xl border border-slate-200 py-3 font-bold text-slate-700 hover:bg-slate-50"
+      >
+        Gửi lại mã
+      </button>
     </div>
   );
-};
-
-export default EmailConfirm;
+}
