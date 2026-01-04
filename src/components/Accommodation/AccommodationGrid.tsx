@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getTop8Accommodations,
   type AccomSummaryDto,
@@ -10,33 +10,53 @@ export default function AccommodationGrid() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // vị trí bắt đầu của "cửa sổ" hiển thị
+  const [start, setStart] = useState(0);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setError(null);
+        setLoading(true);
         const data = await getTop8Accommodations();
-        if (mounted) setItems(data ?? []);
+
+        if (mounted) {
+          // yêu cầu: tối đa 10 khách sạn nổi bật
+          const top10 = (data ?? []).slice(0, 10);
+          setItems(top10);
+          setStart(0);
+        }
       } catch (e: any) {
         if (mounted) setError(e?.message ?? "Fetch failed");
       } finally {
         if (mounted) setLoading(false);
       }
     })();
+
     return () => {
       mounted = false;
     };
   }, []);
 
+  const windowSize = 4;
+
+  const maxStart = useMemo(() => {
+    return Math.max(0, items.length - windowSize); // 10 -> 6
+  }, [items.length]);
+
+  const canPrev = start > 0;
+  const canNext = start < maxStart;
+
+  const visibleItems = useMemo(() => {
+    return items.slice(start, start + windowSize);
+  }, [items, start]);
+
   return (
-    // FIX 1: Container linh hoạt
-    // w-full: chiếm hết chiều ngang cho phép
-    // max-w-7xl: giới hạn tối đa để không bị bè ra quá mức trên màn hình siêu lớn
-    // mx-auto: căn giữa container
-    // px-4: lề an toàn cho mobile
     <section className="w-full max-w-7xl mx-auto px-4">
       <div className="flex items-end justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-800">Khách sạn nổi bật</h2>
+
         <button className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1 rounded transition">
           Xem thêm ưu đãi khách sạn &gt;
         </button>
@@ -48,26 +68,57 @@ export default function AccommodationGrid() {
         </div>
       ) : null}
 
-      {/* FIX 2: Responsive Grid
-          - sm:grid-cols-2: Tablet nhỏ (2 cột)
-          - md:grid-cols-3: Tablet lớn / Laptop nhỏ (3 cột)
-          - lg:grid-cols-4: Laptop / PC (4 cột)
-          - gap-5: Khoảng cách đều giữa các cột
-       */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-        {loading
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                // Aspect ratio giúp placeholder không bị nhảy chiều cao
-                className="aspect-[3/4] rounded-lg border bg-gray-100 animate-pulse"
-              />
-            ))
-          : items
-              .slice(0, 4)
-              .map((x, i) => (
-                <AccommodationCard key={x.id} item={x} index={i} />
+      {/* Wrapper relative để đặt nút trái/phải đè lên grid */}
+      <div className="relative">
+        {/* NÚT TRÁI */}
+        <button
+          onClick={() => setStart((s) => Math.max(0, s - 1))}
+          disabled={loading || !canPrev}
+          aria-label="Previous"
+          className={[
+            "absolute left-0 top-1/2 -translate-y-1/2 z-10",
+            "h-10 w-10 rounded-full border bg-white shadow-md",
+            "flex items-center justify-center",
+            "hover:bg-gray-50 transition",
+            loading || !canPrev ? "opacity-40 cursor-not-allowed" : "",
+          ].join(" ")}
+          style={{ transform: "translate(-50%, -50%)" }} // kéo ra ngoài 1 chút
+          title="Trước"
+        >
+          ‹
+        </button>
+
+        {/* NÚT PHẢI */}
+        <button
+          onClick={() => setStart((s) => Math.min(maxStart, s + 1))}
+          disabled={loading || !canNext}
+          aria-label="Next"
+          className={[
+            "absolute right-0 top-1/2 -translate-y-1/2 z-10",
+            "h-10 w-10 rounded-full border bg-white shadow-md",
+            "flex items-center justify-center",
+            "hover:bg-gray-50 transition",
+            loading || !canNext ? "opacity-40 cursor-not-allowed" : "",
+          ].join(" ")}
+          style={{ transform: "translate(50%, -50%)" }} // kéo ra ngoài 1 chút
+          title="Sau"
+        >
+          ›
+        </button>
+
+        {/* GRID */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          {loading
+            ? Array.from({ length: windowSize }).map((_, i) => (
+                <div
+                  key={i}
+                  className="aspect-[3/4] rounded-lg border bg-gray-100 animate-pulse"
+                />
+              ))
+            : visibleItems.map((x) => (
+                <AccommodationCard key={x.id} item={x} />
               ))}
+        </div>
       </div>
     </section>
   );
