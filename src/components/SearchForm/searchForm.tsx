@@ -1,7 +1,22 @@
 import { useState, type FormEvent } from "react";
 
+interface SearchResultItem {
+  HotelID: string;
+  Description: string;
+  Location: string;
+  score: number;
+}
+
+interface SearchApiResponse {
+  status: number;
+  message: string;
+  query: string;
+  timestamp: number;
+  results: SearchResultItem[];
+}
+
 interface SearchFormProps {
-  onSearchResults?: (results: any[]) => void;
+  onSearchResults?: (results: SearchResultItem[]) => void;
   onSearchStart?: () => void;
   onSearchEnd?: () => void;
 }
@@ -16,38 +31,45 @@ export default function SearchForm({
   const handleSearch = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!query.trim()) {
+    const q = query.trim();
+    if (!q) {
       alert("Vui lòng nhập từ khóa tìm kiếm");
       return;
     }
 
     onSearchStart?.();
 
-    const encodedQuery = query.trim();
-    const url = `http://127.0.0.1:8009/search?query=${encodedQuery}&top_k=10`;
+    const url = `http://127.0.0.1:8009/search?query=${encodeURIComponent(
+      q
+    )}&top_k=10`;
 
     try {
       const response = await fetch(url, {
         method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
+        headers: { Accept: "application/json" },
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const text = await response.text().catch(() => "");
+        throw new Error(
+          `HTTP ${response.status}: ${text || response.statusText}`
+        );
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as Partial<SearchApiResponse>;
 
-      const resultsArray = data.results || [];
+      // Debug toàn bộ response
+      console.log("Response từ backend:", data);
+
+      // Validate đúng format bạn gửi
+      const resultsArray = Array.isArray(data.results) ? data.results : [];
 
       onSearchResults?.(resultsArray);
-      console.log("Kết quả từ backend:", resultsArray);
+      console.log("results[]:", resultsArray);
     } catch (error) {
       console.error("Lỗi khi gọi API:", error);
       alert(
-        "Không thể kết nối đến server tìm kiếm. Vui lòng kiểm tra backend."
+        "Không thể kết nối đến server tìm kiếm. Vui lòng kiểm tra backend/CORS."
       );
       onSearchResults?.([]);
     } finally {

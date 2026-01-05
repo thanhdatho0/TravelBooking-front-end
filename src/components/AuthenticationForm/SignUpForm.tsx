@@ -17,63 +17,13 @@ export default function SignUpForm({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-<<<<<<< HEAD
-  const validateFullName = (name: string): boolean => {
-    // Regex kiểm tra tên:
-    // ^: Bắt đầu chuỗi
-    // [\p{L}\s]+: Ít nhất một hoặc nhiều ký tự chữ cái (bao gồm Unicode như tiếng Việt) HOẶC khoảng trắng
-    // $: Kết thúc chuỗi
-    // u: cờ Unicode
-    const regex = /^[\p{L}\s]{2,}$/u;
-
-    // Loại bỏ khoảng trắng ở đầu/cuối trước khi kiểm tra độ dài và regex
-    const trimmedName = name.trim();
-
-    // Kiểm tra độ dài tối thiểu 2 ký tự VÀ khớp với regex (chỉ chứa chữ cái và khoảng trắng)
-    return trimmedName.length >= 2 && regex.test(trimmedName);
-  };
-
-  const validateForm = (): boolean => {
-    const emailResult = validateEmail(email);
-    const passwordResult = validatePassword(password);
-    const fullNameValid = validateFullName(fullName);
-
-    // Nếu có lỗi → không cho submit
-    if (!emailResult.isValid || !passwordResult.isValid || !fullNameValid) {
-      return false;
-    }
-    return true;
-  };
-
-  // Xử lý submit
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Ngăn reload trang
-    setSubmitAttempted(true);
-    if (!validateForm()) {
-      return; // Dừng lại nếu validate fail
-=======
   const submit = async () => {
     if (password !== password2) {
       setErr("Mật khẩu nhập lại không khớp");
       return;
->>>>>>> e0a479b358b3510408cd8da52e3558f93b95a06a
     }
 
     try {
-<<<<<<< HEAD
-      const res = await fetch(
-        "https://4ab83ec2e093.ngrok-free.app/api/Auth/pre-register",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fullName, // Giả sử API cần field này
-            email,
-            password,
-          }),
-        }
-      );
-=======
       setErr(null);
       setLoading(true);
 
@@ -82,7 +32,6 @@ export default function SignUpForm({
         fullName: fullName.trim(),
         password,
       });
->>>>>>> e0a479b358b3510408cd8da52e3558f93b95a06a
 
       onSignUpSuccess(); // đóng modal + set logged in (nếu bạn muốn login luôn thì gọi login ở đây)
     } catch (ex: any) {

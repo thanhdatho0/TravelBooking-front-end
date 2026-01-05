@@ -17,34 +17,12 @@ export default function EmailConfirm({
 
   const submit = async () => {
     try {
-<<<<<<< HEAD
-      const res = await fetch(
-        "https://4ab83ec2e093.ngrok-free.app/api/Auth/verify-email",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ Email: email, Code: code }),
-        }
-      );
-
-      if (res.ok) {
-        alert("Xác thực thành công!");
-        onSuccess?.();
-      } else {
-        const errorData = await res.json();
-        alert(errorData.message || "Xác thực thất bại. Vui lòng thử lại.");
-      }
-    } catch (err) {
-      console.error("Lỗi gọi API:", err);
-      alert("Lỗi kết nối. Vui lòng kiểm tra mạng.");
-=======
       setErr(null);
       setLoading(true);
       await verifyEmail(email, code.trim());
       onSuccess();
     } catch (ex: any) {
       setErr(ex?.response?.data ?? ex?.message ?? "OTP không đúng");
->>>>>>> e0a479b358b3510408cd8da52e3558f93b95a06a
     } finally {
       setLoading(false);
     }
@@ -52,35 +30,12 @@ export default function EmailConfirm({
 
   const resend = async () => {
     try {
-<<<<<<< HEAD
-      const res = await fetch(
-        "https://4ab83ec2e093.ngrok-free.app/api/Auth/pre-register",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ Email: email }),
-        }
-      );
-
-      if (res.ok) {
-        alert("Đã gửi lại mã xác minh!");
-        setCountdown(30); // Reset countdown
-        setCanResend(false);
-      } else {
-        alert("Không thể gửi lại mã. Vui lòng thử lại.");
-      }
-    } catch (err) {
-      alert("Lỗi kết nối.");
-    } finally {
-      setIsResending(false);
-=======
       setErr(null);
       await preRegister(email);
     } catch (ex: any) {
       setErr(
         ex?.response?.data?.message ?? ex?.message ?? "Không thể gửi lại mã"
       );
->>>>>>> e0a479b358b3510408cd8da52e3558f93b95a06a
     }
   };
 

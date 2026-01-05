@@ -18,19 +18,8 @@ export default function LoginOrCreate({
     if (!e) return;
 
     try {
-<<<<<<< HEAD
-      const res = await fetch(
-        "https://4ab83ec2e093.ngrok-free.app/api/Auth/pre-register",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ Email: email.trim() }),
-        }
-      );
-=======
       setErr(null);
       setLoading(true);
->>>>>>> e0a479b358b3510408cd8da52e3558f93b95a06a
 
       // 1) kiểm tra email đã có account/password chưa
       await validateEmail(e);

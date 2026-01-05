@@ -1,10 +1,9 @@
 import AccomItem from "../AccomItem/AccomItem";
 
 interface Accommodation {
-  doc_id: number;
-  name_hotel: string;
-  title: string; // Đây là mô tả dài
-  location: string;
+  HotelID: string;
+  Description: string;
+  Location: string;
   score: number;
 }
 
@@ -22,7 +21,6 @@ const AccomListItems = ({
   if (isLoading) {
     return (
       <div className="flex flex-col justify-center items-center py-20!">
-        {/* Vòng xoay tạo bằng Tailwind */}
         <div className="w-12 h-12 border-4 border-gray-200 border-t-sky-600 rounded-full animate-spin mb-4!"></div>
         <p className="text-gray-500 text-sm animate-pulse">
           Đang tìm kiếm dữ liệu...
@@ -31,9 +29,7 @@ const AccomListItems = ({
     );
   }
 
-  if (!hasSearched && items.length === 0) {
-    return null;
-  }
+  if (!hasSearched && items.length === 0) return null;
 
   if (hasSearched && items.length === 0) {
     return (
@@ -43,29 +39,28 @@ const AccomListItems = ({
       </div>
     );
   }
+
   return (
     <div className="grid grid-cols-1 gap-10">
       {items.map((item) => {
         const randomPrice = Math.floor(
           Math.random() * (2000000 - 300000) + 300000
         );
-        const randomStar = Math.floor(Math.random() * 3) + 3; // 3 đến 5 sao
-        const randomRating = (randomStar * 10).toFixed(1); // Giả lập rating từ score AI
+        const randomStar = Math.floor(Math.random() * 3) + 3; // 3-5 sao
+        const randomRating = (randomStar * 2).toFixed(1); // 6.0 - 10.0
 
         return (
           <AccomItem
-            key={item.doc_id} // JSON dùng doc_id
-            // CSS capitalize để viết hoa chữ cái đầu (backend trả về chữ thường)
-            name={
-              (<span className="capitalize">{item.name_hotel}</span>) as any
-            }
-            // Các trường backend chưa có -> dùng fallback
-            price={randomPrice}
-            rating={Number(randomRating) > 10 ? 9.5 : Number(randomRating)} // Score đôi khi > 1
-            reviewCount={Math.floor(Math.random() * 500)} // Random số review
-            starCount={randomStar}
-            description={item.title}
+            key={item.HotelID}
+            hotelId={item.HotelID}
+            location={item.Location}
+            description={item.Description}
             score={item.score}
+            // fallback
+            price={randomPrice}
+            rating={Number(randomRating) > 10 ? 9.5 : Number(randomRating)}
+            reviewCount={Math.floor(Math.random() * 500)}
+            starCount={randomStar}
           />
         );
       })}
