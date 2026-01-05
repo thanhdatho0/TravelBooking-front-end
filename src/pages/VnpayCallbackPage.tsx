@@ -1,5 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { api } from "../api/api";
+
+function isGuid(id: string) {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    id
+  );
+}
+
+// ✅ gọi API update-status (không body)
+async function updatePaymentRecordStatusToSuccess(paymentRecordId: string) {
+  // dùng URL ngrok bạn đưa
+  const url = `https://889de656cbdb.ngrok-free.app/api/PaymentRecord/${paymentRecordId}/update-status`;
+
+  await api.put(url, null, {
+    headers: {
+      accept: "*/*",
+    },
+  });
+}
 
 export default function VnpayCallbackPage() {
   const [params] = useSearchParams();
@@ -15,16 +34,25 @@ export default function VnpayCallbackPage() {
   // ✅ dạng VNPAY trả về chuẩn
   const vnpResponseCode = params.get("vnp_ResponseCode"); // "00"
   const vnpTxnStatus = params.get("vnp_TransactionStatus"); // "00"
-  const vnpTxnRef = params.get("vnp_TxnRef"); // mã ref
+  const vnpTxnRef = params.get("vnp_TxnRef");
 
-  // ✅ lấy id hiển thị ở trang success/fail
-  const paymentRecordId =
+  // ✅ id hiển thị ở trang success/fail (có thể là số)
+  const paymentRecordIdForDisplay =
     orderId ||
     vnpTxnRef ||
     localStorage.getItem("pendingPaymentRecordId") ||
     "";
 
-  // ✅ điều kiện thành công: ưu tiên status, nếu không có thì dùng vnp_*
+  // ✅ id để update DB (bắt buộc GUID) -> ưu tiên localStorage
+  const pendingPaymentRecordId =
+    localStorage.getItem("pendingPaymentRecordId") || "";
+  const paymentRecordIdForUpdate = isGuid(pendingPaymentRecordId)
+    ? pendingPaymentRecordId
+    : isGuid(paymentRecordIdForDisplay)
+    ? paymentRecordIdForDisplay
+    : "";
+
+  // ✅ điều kiện thành công
   const isSuccess =
     status === "00" ||
     (vnpResponseCode === "00" &&
@@ -34,29 +62,79 @@ export default function VnpayCallbackPage() {
     if (ran.current) return;
     ran.current = true;
 
-    if (isSuccess) {
-      setMsg("Thanh toán thành công. Đang chuyển trang...");
+    (async () => {
+      if (isSuccess) {
+        try {
+          setMsg(
+            "Thanh toán thành công. Đang cập nhật trạng thái (status=1)..."
+          );
+
+          if (paymentRecordIdForUpdate) {
+            await updatePaymentRecordStatusToSuccess(paymentRecordIdForUpdate);
+          } else {
+            console.warn("Không có paymentRecordId GUID để update-status");
+          }
+
+          setMsg("Cập nhật xong. Đang chuyển sang trang thành công...");
+
+          // optional cleanup
+          localStorage.removeItem("pendingReturnUrl");
+          localStorage.removeItem("pendingVnpayPaymentId");
+          // localStorage.removeItem("pendingPaymentRecordId");
+
+          nav(
+            `/payment/success${
+              paymentRecordIdForDisplay
+                ? `?paymentRecordId=${encodeURIComponent(
+                    paymentRecordIdForDisplay
+                  )}`
+                : ""
+            }`,
+            { replace: true }
+          );
+        } catch (e: any) {
+          console.error("update-status failed:", e);
+
+          // không stuck: vẫn redirect success để user đi tiếp
+          setMsg(
+            "Đã thanh toán nhưng cập nhật status thất bại. Đang chuyển trang..."
+          );
+
+          nav(
+            `/payment/success${
+              paymentRecordIdForDisplay
+                ? `?paymentRecordId=${encodeURIComponent(
+                    paymentRecordIdForDisplay
+                  )}`
+                : ""
+            }`,
+            { replace: true }
+          );
+        }
+        return;
+      }
+
+      setMsg("Thanh toán thất bại. Đang chuyển trang...");
       nav(
-        `/payment/success${
-          paymentRecordId
-            ? `?paymentRecordId=${encodeURIComponent(paymentRecordId)}`
-            : ""
-        }`,
+        `/payment/fail${
+          paymentRecordIdForDisplay
+            ? `?paymentRecordId=${encodeURIComponent(
+                paymentRecordIdForDisplay
+              )}`
+            : "?"
+        }&code=${encodeURIComponent(status || vnpResponseCode || "unknown")}`,
         { replace: true }
       );
-      return;
-    }
-
-    setMsg("Thanh toán thất bại. Đang chuyển trang...");
-    nav(
-      `/payment/fail${
-        paymentRecordId
-          ? `?paymentRecordId=${encodeURIComponent(paymentRecordId)}`
-          : ""
-      }&code=${encodeURIComponent(status || vnpResponseCode || "unknown")}`,
-      { replace: true }
-    );
-  }, [nav, isSuccess, paymentRecordId, status, vnpResponseCode, vnpTxnStatus]);
+    })();
+  }, [
+    nav,
+    isSuccess,
+    paymentRecordIdForDisplay,
+    paymentRecordIdForUpdate,
+    status,
+    vnpResponseCode,
+    vnpTxnStatus,
+  ]);
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center bg-slate-50 px-4">
@@ -69,7 +147,11 @@ export default function VnpayCallbackPage() {
         <div className="mt-4 text-xs text-slate-500">
           status: <b>{String(status ?? vnpResponseCode ?? "(none)")}</b>
           <br />
-          paymentRecordId/orderId: <b>{paymentRecordId || "(none)"}</b>
+          paymentRecordId(display):{" "}
+          <b>{paymentRecordIdForDisplay || "(none)"}</b>
+          <br />
+          paymentRecordId(update GUID):{" "}
+          <b>{paymentRecordIdForUpdate || "(none)"}</b>
         </div>
       </div>
     </div>
