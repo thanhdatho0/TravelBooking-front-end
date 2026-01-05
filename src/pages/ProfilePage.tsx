@@ -1,191 +1,63 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  getAccommodationDetail,
-  type AccomDetailDto,
-} from "../api/accommodationDetail";
+import { useEffect, useState } from "react";
+import { getUserById, updateUser, type UserPersonalInfoDto } from "../api/user";
 
-// ✅ lấy profile giống ProfilePage
-import { getUserById, type UserPersonalInfoDto } from "../api/user";
-
-function formatVnd(v?: number | null) {
-  if (v == null) return "Liên hệ";
-  return new Intl.NumberFormat("vi-VN").format(v) + " VND";
+function Spinner() {
+  return (
+    <div className="flex items-center justify-center py-10">
+      <div className="h-10 w-10 rounded-full border-4 border-slate-200 border-t-sky-600 animate-spin" />
+    </div>
+  );
 }
 
-type BookingRoomState = {
-  roomId: string;
-  roomName: string;
-  price?: number | null;
-  breakfast?: boolean;
-  accomName?: string;
-};
-
-type LocationState = {
-  selectedRoom?: BookingRoomState;
-};
-
-function classNames(...s: Array<string | false | null | undefined>) {
-  return s.filter(Boolean).join(" ");
-}
-
-function addDays(d: Date, days: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + days);
-  return x;
-}
-
-function toDateInputValue(d: Date) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function formatDateVi(d: Date) {
-  return d.toLocaleDateString("vi-VN", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-export default function BookingPage() {
-  const { accomId } = useParams();
-  const nav = useNavigate();
-  const location = useLocation();
-  const state = (location.state || {}) as LocationState;
-
+export default function ProfilePage() {
   const userId = localStorage.getItem("userId") || "";
 
-  const [accom, setAccom] = useState<AccomDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
 
-  // ✅ profile
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileErr, setProfileErr] = useState<string | null>(null);
-  const [profile, setProfile] = useState<UserPersonalInfoDto | null>(null);
+  const [data, setData] = useState<UserPersonalInfoDto | null>(null);
 
-  // selected room (from navigate state)
-  const selectedRoom = state.selectedRoom;
+  // form state
+  const [fullName, setFullName] = useState("");
+  const [birthDate, setBirthDate] = useState<string>(""); // yyyy-mm-dd
+  const [sex, setSex] = useState<"male" | "female" | "unset">("unset");
+  const [phoneNumber, setPhoneNumber] = useState<string>(""); // ✅ new
 
-  // dates & guests
-  const [checkIn, setCheckIn] = useState<string>(() =>
-    toDateInputValue(addDays(new Date(), 1))
-  );
-  const [checkOut, setCheckOut] = useState<string>(() =>
-    toDateInputValue(addDays(new Date(), 2))
-  );
-  const [roomsCount, setRoomsCount] = useState<number>(1);
-  const [adults, setAdults] = useState<number>(2);
-  const [children, setChildren] = useState<number>(0);
-
-  // ✅ form values (auto fill from profile, và không cho sửa)
-  const [contactName, setContactName] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [guestName, setGuestName] = useState("");
-
-  // requests
-  const [reqNoSmoking, setReqNoSmoking] = useState(false);
-  const [reqConnecting, setReqConnecting] = useState(false);
-  const [reqHighFloor, setReqHighFloor] = useState(false);
-
-  // validation
-  const [submitErr, setSubmitErr] = useState<string | null>(null);
-
-  const nights = useMemo(() => {
-    const a = new Date(checkIn);
-    const b = new Date(checkOut);
-    const diff = Math.ceil((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
-    return Number.isFinite(diff) && diff > 0 ? diff : 1;
-  }, [checkIn, checkOut]);
-
-  const roomPrice = selectedRoom?.price ?? null;
-
-  const baseRoomTotal = useMemo(() => {
-    if (roomPrice == null) return null;
-    return roomPrice * nights * Math.max(1, roomsCount);
-  }, [roomPrice, nights, roomsCount]);
-
-  const serviceFee = useMemo(() => {
-    if (baseRoomTotal == null) return null;
-    return Math.round(baseRoomTotal * 0.1);
-  }, [baseRoomTotal]);
-
-  const grandTotal = useMemo(() => {
-    if (baseRoomTotal == null) return null;
-    return baseRoomTotal + (serviceFee ?? 0);
-  }, [baseRoomTotal, serviceFee]);
-
-  // Load accom detail
-  useEffect(() => {
-    if (!accomId) return;
-
-    (async () => {
-      try {
-        setErr(null);
-        setLoading(true);
-        const dto = await getAccommodationDetail(accomId);
-        setAccom(dto);
-      } catch (e: any) {
-        setErr(e?.message ?? "Không tải được dữ liệu khách sạn");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [accomId]);
-
-  // Fix checkOut
-  useEffect(() => {
-    const a = new Date(checkIn);
-    const b = new Date(checkOut);
-    if (b.getTime() <= a.getTime()) {
-      setCheckOut(toDateInputValue(addDays(a, 1)));
-    }
-  }, [checkIn]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ✅ Load profile giống ProfilePage
   useEffect(() => {
     if (!userId) {
-      setProfileErr("Chưa có userId. Bạn hãy đăng nhập lại.");
+      setLoading(false);
+      setErr("Chưa có userId. Bạn hãy đăng nhập lại.");
       return;
     }
 
     let mounted = true;
-
     (async () => {
       try {
-        setProfileErr(null);
-        setProfileLoading(true);
+        setErr(null);
+        setOk(null);
+        setLoading(true);
 
         const dto = await getUserById(userId);
         if (!mounted) return;
 
-        setProfile(dto);
+        setData(dto);
+        setFullName(dto.fullName ?? "");
+        setBirthDate(dto.birthDate ?? "");
 
-        const fullName = (dto.fullName ?? "").trim();
-        const email = (dto.email ?? "").trim();
-        const phone = (dto.phoneNumber ?? "").trim();
+        // ✅ new
+        setPhoneNumber(dto.phoneNumber ?? "");
 
-        // ✅ set 1 lần từ profile
-        setContactName(fullName);
-        setContactEmail(email);
-        setContactPhone(phone);
-        setGuestName(fullName);
+        if (dto.sex === true) setSex("male");
+        else if (dto.sex === false) setSex("female");
+        else setSex("unset");
       } catch (e: any) {
         if (mounted) {
-          setProfileErr(
-            e?.response?.data?.message ??
-              e?.response?.data ??
-              e?.message ??
-              "Không tải được hồ sơ"
-          );
+          setErr(e?.response?.data ?? e?.message ?? "Không tải được hồ sơ");
         }
       } finally {
-        if (mounted) setProfileLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
 
@@ -194,488 +66,186 @@ export default function BookingPage() {
     };
   }, [userId]);
 
-  const invalidProfile = {
-    contactName: !contactName.trim(),
-    contactPhone: !contactPhone.trim(),
-    contactEmail: !contactEmail.trim() || !contactEmail.includes("@"),
-    guestName: !guestName.trim(),
-  };
+  const onSave = async () => {
+    if (!userId) return;
 
-  const needUpdateProfile = Object.values(invalidProfile).some(Boolean);
+    try {
+      setErr(null);
+      setOk(null);
+      setSaving(true);
 
-  const onSubmit = () => {
-    setSubmitErr(null);
+      await updateUser(userId, {
+        fullName: fullName.trim(),
+        birthDate: birthDate ? birthDate : null,
+        sex: sex === "unset" ? null : sex === "male",
 
-    if (profileLoading) {
-      setSubmitErr("Đang tải hồ sơ, vui lòng thử lại sau vài giây.");
-      return;
-    }
+        // ✅ new
+        phoneNumber: phoneNumber.trim() || null,
+      });
 
-    if (!selectedRoom) {
-      setSubmitErr("Vui lòng chọn phòng trước.");
-      return;
-    }
-
-    if (profileErr) {
-      setSubmitErr("Không tải được hồ sơ. Vui lòng thử đăng nhập lại.");
-      return;
-    }
-
-    if (needUpdateProfile) {
-      setSubmitErr(
-        "Hồ sơ của bạn chưa đầy đủ (Họ tên / SĐT / Email). Vui lòng cập nhật hồ sơ trước khi đặt phòng."
+      setOk("Lưu hồ sơ thành công!");
+    } catch (e: any) {
+      setErr(
+        e?.response?.data?.message ??
+          e?.response?.data ??
+          e?.message ??
+          "Lưu thất bại"
       );
-      return;
+    } finally {
+      setSaving(false);
     }
-
-    // TODO: call booking API ở đây
-    alert("OK ✅ (Demo UI) — Bạn có thể gọi API tạo booking tại đây.");
   };
-
-  if (!accomId) return null;
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="h-10 w-1/2 rounded-xl bg-slate-100 animate-pulse" />
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 h-80 rounded-2xl bg-slate-100 animate-pulse" />
-          <div className="lg:col-span-4 h-80 rounded-2xl bg-slate-100 animate-pulse" />
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+          <div className="h-6 w-40 bg-slate-100 rounded animate-pulse" />
+          <div className="mt-4 h-10 bg-slate-100 rounded animate-pulse" />
+          <div className="mt-3 h-10 bg-slate-100 rounded animate-pulse" />
+          <div className="mt-3 h-10 bg-slate-100 rounded animate-pulse" />
+          <Spinner />
         </div>
       </div>
     );
   }
-
-  if (!accom || err) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700 border border-rose-200">
-          Không tải được trang đặt phòng: {err ?? "No data"}
-        </div>
-      </div>
-    );
-  }
-
-  const TopBar = (
-    <div className="sticky top-0 z-40 bg-white border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-sm font-extrabold text-slate-900 truncate">
-            {accom.name}
-          </div>
-          <div className="text-xs text-slate-500 truncate">
-            {selectedRoom?.roomName ?? "Phòng đã chọn"}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs font-bold">
-          <span className="px-2 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">
-            1
-          </span>
-          <span className="text-slate-600">Xem lại</span>
-          <span className="text-slate-300">—</span>
-          <span className="px-2 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-100">
-            2
-          </span>
-          <span className="text-slate-600">Thanh toán</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => nav(-1)}
-          className="text-sm font-bold text-sky-700 hover:text-sky-800"
-        >
-          Quay lại
-        </button>
-      </div>
-    </div>
-  );
 
   return (
-    <div className="bg-slate-50 min-h-screen">
-      {TopBar}
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="rounded-2xl bg-sky-50 border border-sky-100 px-4 py-3 text-sm text-sky-800 flex items-center justify-between gap-3">
-          <div className="font-bold">
-            Đăng nhập hoặc đăng ký để có giá rẻ hơn và nhiều ưu đãi hơn!
-          </div>
-          <button className="text-sm font-extrabold text-sky-700 hover:text-sky-800">
-            Đăng nhập/Đăng ký
-          </button>
-        </div>
-
-        {/* ✅ trạng thái hồ sơ */}
-        {profileErr ? (
-          <div className="mt-4 rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
-            {String(profileErr)}
-          </div>
-        ) : profileLoading ? (
-          <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-700">
-            Đang tải hồ sơ...
-          </div>
-        ) : needUpdateProfile ? (
-          <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-center justify-between gap-3">
-            <div className="font-bold">
-              Hồ sơ chưa đầy đủ. Vui lòng cập nhật Họ tên / SĐT / Email để đặt
-              phòng.
+    <div className="bg-slate-50 min-h-[60vh]">
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 py-4 bg-sky-50 border-b border-sky-100">
+            <div className="text-xl font-extrabold text-slate-900">
+              Thông tin cá nhân
             </div>
-            <button
-              type="button"
-              onClick={() => nav("/profile")}
-              className="text-sm font-extrabold text-amber-700 hover:text-amber-800"
-            >
-              Cập nhật hồ sơ
-            </button>
+            <div className="text-sm text-slate-600 mt-1">
+              Cập nhật hồ sơ để đặt phòng nhanh hơn
+            </div>
           </div>
-        ) : null}
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* LEFT */}
-          <div className="lg:col-span-8 space-y-5">
-            {/* Contact */}
-            <section className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
-              <div className="font-extrabold text-slate-900">
-                Liên hệ đặt chỗ
+          <div className="p-6 space-y-4">
+            {err ? (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">
+                {String(err)}
               </div>
-              <div className="text-sm text-slate-500 mt-1">
-                Thông tin được lấy từ hồ sơ cá nhân (không thể chỉnh sửa tại
-                đây).
+            ) : null}
+
+            {ok ? (
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">
+                {ok}
               </div>
+            ) : null}
 
-              {submitErr ? (
-                <div className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700 border border-rose-200">
-                  {submitErr}
-                </div>
-              ) : null}
+            <div>
+              <label className="block text-sm font-bold text-slate-800">
+                Email
+              </label>
+              <input
+                value={data?.email ?? ""}
+                disabled
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none"
+              />
+            </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-4">
-                <div>
-                  <label className="text-sm font-bold text-slate-700">
-                    Họ tên<span className="text-rose-600">*</span>
-                  </label>
-                  <input
-                    value={contactName}
-                    disabled
-                    className={classNames(
-                      "mt-1 w-full rounded-xl border px-4 py-2.5 outline-none",
-                      invalidProfile.contactName
-                        ? "border-rose-300 bg-rose-50"
-                        : "border-slate-200 bg-slate-50"
-                    )}
-                    placeholder="(Trống) — Vui lòng cập nhật hồ sơ"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                  <div className="sm:col-span-5">
-                    <label className="text-sm font-bold text-slate-700">
-                      Điện thoại di động<span className="text-rose-600">*</span>
-                    </label>
-                    <input
-                      value={contactPhone}
-                      disabled
-                      className={classNames(
-                        "mt-1 w-full rounded-xl border px-4 py-2.5 outline-none",
-                        invalidProfile.contactPhone
-                          ? "border-rose-300 bg-rose-50"
-                          : "border-slate-200 bg-slate-50"
-                      )}
-                      placeholder="(Trống) — Vui lòng cập nhật hồ sơ"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-7">
-                    <label className="text-sm font-bold text-slate-700">
-                      Email<span className="text-rose-600">*</span>
-                    </label>
-                    <input
-                      value={contactEmail}
-                      disabled
-                      className={classNames(
-                        "mt-1 w-full rounded-xl border px-4 py-2.5 outline-none",
-                        invalidProfile.contactEmail
-                          ? "border-rose-300 bg-rose-50"
-                          : "border-slate-200 bg-slate-50"
-                      )}
-                      placeholder="(Trống) — Vui lòng cập nhật hồ sơ"
-                    />
-                  </div>
-                </div>
-
-                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    disabled
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
-                  Tôi đặt chỗ cho chính mình
-                </label>
+            {/* ✅ new: Phone number */}
+            <div>
+              <label className="block text-sm font-bold text-slate-800">
+                Số điện thoại
+              </label>
+              <input
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="Nhập số điện thoại"
+                inputMode="tel"
+                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-sky-200"
+              />
+              <div className="mt-1 text-xs text-slate-500">
+                * Nên nhập dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx
               </div>
-            </section>
+            </div>
 
-            {/* Guest info */}
-            <section className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
-              <div className="font-extrabold text-slate-900">
-                Thông tin Khách hàng
-              </div>
-              <div className="text-sm text-slate-500 mt-1">
-                Tên khách lưu trú được lấy từ hồ sơ cá nhân.
-              </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-800">
+                Họ và tên
+              </label>
+              <input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Nhập họ và tên"
+                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-sky-200"
+              />
+            </div>
 
-              <div className="mt-4">
-                <label className="text-sm font-bold text-slate-700">
-                  Họ tên<span className="text-rose-600">*</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-800">
+                  Ngày sinh
                 </label>
                 <input
-                  value={guestName}
-                  disabled
-                  className={classNames(
-                    "mt-1 w-full rounded-xl border px-4 py-2.5 outline-none",
-                    invalidProfile.guestName
-                      ? "border-rose-300 bg-rose-50"
-                      : "border-slate-200 bg-slate-50"
-                  )}
-                  placeholder="(Trống) — Vui lòng cập nhật hồ sơ"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-sky-200"
                 />
               </div>
-            </section>
 
-            {/* Special requests */}
-            <section className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
-              <div className="font-extrabold text-slate-900">
-                Yêu cầu đặc biệt
-              </div>
-              <div className="text-sm text-slate-500 mt-1">
-                Gửi yêu cầu và khách sạn sẽ cố gắng đáp ứng (không đảm bảo).
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-4 text-sm">
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={reqNoSmoking}
-                    onChange={(e) => setReqNoSmoking(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
-                  Phòng không hút thuốc
+              <div>
+                <label className="block text-sm font-bold text-slate-800">
+                  Giới tính
                 </label>
 
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={reqConnecting}
-                    onChange={(e) => setReqConnecting(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
-                  Phòng liền thông
-                </label>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSex("unset")}
+                    className={[
+                      "px-4 py-3 rounded-xl border text-sm font-bold transition",
+                      sex === "unset"
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    Chưa chọn
+                  </button>
 
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={reqHighFloor}
-                    onChange={(e) => setReqHighFloor(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
-                  Tầng lầu
-                </label>
-              </div>
-            </section>
+                  <button
+                    type="button"
+                    onClick={() => setSex("male")}
+                    className={[
+                      "px-4 py-3 rounded-xl border text-sm font-bold transition",
+                      sex === "male"
+                        ? "bg-sky-600 text-white border-sky-600"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    Nam
+                  </button>
 
-            {/* Policy */}
-            <section className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="font-extrabold text-slate-900">
-                  Chính sách Chỗ ở
-                </div>
-                <button className="text-sm font-bold text-sky-700 hover:text-sky-800">
-                  Đọc tất cả
-                </button>
-              </div>
-
-              <div className="mt-3 text-sm text-slate-600">
-                <div className="font-bold text-slate-800">
-                  Hướng Dẫn Nhận Phòng Chung
-                </div>
-                <ul className="mt-2 list-disc pl-5 space-y-1">
-                  <li>
-                    Khách có thể cần xuất trình giấy tờ tuỳ thân khi nhận phòng.
-                  </li>
-                  <li>
-                    Giờ nhận phòng/trả phòng tuỳ theo chính sách khách sạn.
-                  </li>
-                  <li>
-                    Yêu cầu đặc biệt tuỳ thuộc tình trạng phòng và có thể phát
-                    sinh phí.
-                  </li>
-                </ul>
-              </div>
-            </section>
-          </div>
-
-          {/* RIGHT (sticky summary) */}
-          <div className="lg:col-span-4">
-            <div className="sticky top-[72px] space-y-4">
-              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
-                <div className="text-xs font-bold text-sky-700">
-                  {selectedRoom ? "Bạn đã chọn phòng" : "Chưa chọn phòng"}
-                </div>
-
-                <div className="mt-1 font-extrabold text-slate-900">
-                  {selectedRoom?.roomName ?? "—"}
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl border border-slate-200 p-3">
-                    <div className="text-xs text-slate-500">Nhận phòng</div>
-                    <div className="font-bold text-slate-900">
-                      {formatDateVi(new Date(checkIn))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 p-3">
-                    <div className="text-xs text-slate-500">Trả phòng</div>
-                    <div className="font-bold text-slate-900">
-                      {formatDateVi(new Date(checkOut))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-12 gap-3 text-sm">
-                  <div className="col-span-6">
-                    <label className="text-xs font-bold text-slate-600">
-                      Số phòng
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={roomsCount}
-                      onChange={(e) =>
-                        setRoomsCount(Math.max(1, Number(e.target.value) || 1))
-                      }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
-                    />
-                  </div>
-
-                  <div className="col-span-3">
-                    <label className="text-xs font-bold text-slate-600">
-                      NL
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={adults}
-                      onChange={(e) =>
-                        setAdults(Math.max(1, Number(e.target.value) || 1))
-                      }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
-                    />
-                  </div>
-
-                  <div className="col-span-3">
-                    <label className="text-xs font-bold text-slate-600">
-                      TE
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={children}
-                      onChange={(e) =>
-                        setChildren(Math.max(0, Number(e.target.value) || 0))
-                      }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">
-                      Check-in
-                    </label>
-                    <input
-                      type="date"
-                      value={checkIn}
-                      onChange={(e) => setCheckIn(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">
-                      Check-out
-                    </label>
-                    <input
-                      type="date"
-                      value={checkOut}
-                      onChange={(e) => setCheckOut(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-3 text-xs text-emerald-700 font-bold">
-                  {selectedRoom?.breakfast
-                    ? "🍳 Có bữa sáng"
-                    : "🍽️ Không gồm bữa sáng"}
-                </div>
-
-                <div className="mt-2 text-xs text-slate-500">
-                  {nights} đêm · {roomsCount} phòng
+                  <button
+                    type="button"
+                    onClick={() => setSex("female")}
+                    className={[
+                      "px-4 py-3 rounded-xl border text-sm font-bold transition",
+                      sex === "female"
+                        ? "bg-pink-600 text-white border-pink-600"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    Nữ
+                  </button>
                 </div>
               </div>
+            </div>
 
-              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
-                <div className="flex items-center justify-between">
-                  <div className="font-extrabold text-slate-900">
-                    Chi tiết giá
-                  </div>
-                  <span className="text-xs text-slate-500">{nights} đêm</span>
-                </div>
-
-                <div className="mt-3 space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Giá phòng</span>
-                    <span className="font-bold text-slate-900">
-                      {baseRoomTotal == null ? "—" : formatVnd(baseRoomTotal)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Thuế & phí</span>
-                    <span className="font-bold text-slate-900">
-                      {serviceFee == null ? "—" : formatVnd(serviceFee)}
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-slate-900 font-extrabold">
-                      Tổng cộng
-                    </span>
-                    <span className="text-orange-500 font-extrabold text-lg">
-                      {grandTotal == null ? "—" : formatVnd(grandTotal)}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onSubmit}
-                  className="mt-4 w-full rounded-xl bg-sky-600 text-white font-extrabold py-3 hover:bg-sky-700 active:scale-[0.99] transition disabled:opacity-60"
-                  disabled={!selectedRoom || profileLoading}
-                  title={
-                    !selectedRoom ? "Vui lòng chọn phòng trước" : "Tiếp tục"
-                  }
-                >
-                  Tiếp tục
-                </button>
-
-                <div className="mt-3 text-xs text-slate-500">
-                  Bằng cách tiến hành thanh toán, bạn đã đồng ý với Điều khoản &
-                  Chính sách.
-                </div>
-              </div>
+            <div className="pt-2 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={saving}
+                className="rounded-xl bg-orange-500 text-white font-extrabold px-6 py-3 hover:bg-orange-600 disabled:opacity-60"
+              >
+                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
             </div>
           </div>
         </div>

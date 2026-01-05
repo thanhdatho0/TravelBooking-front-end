@@ -8,7 +8,7 @@ import {
 // ✅ lấy profile giống ProfilePage
 import { getUserById, type UserPersonalInfoDto } from "../api/user";
 
-// ✅ gọi VNPAY bằng axios instance của bạn
+// ✅ gọi API bằng axios instance của bạn
 import { api, withApiPrefix } from "../api/api";
 
 function formatVnd(v?: number | null) {
@@ -56,7 +56,7 @@ function formatDateVi(d: Date) {
 
 // ✅ response từ /Vnpay
 type VnpayResponse = {
-  paymentId?: unknown; // rất lớn, FE không nên dùng
+  paymentId?: unknown;
   paymentUrl: string;
 };
 
@@ -71,6 +71,27 @@ async function createVnpay(amountVnd: number) {
     },
   });
 
+  return res.data;
+}
+
+// ✅ PaymentRecord create DTO (khớp controller bạn đưa)
+// ✅ thêm status để set Pending = 0 (hết lỗi TS)
+type PaymentRecordCreateDto = {
+  roomId: string;
+  roomName?: string | null;
+  price: number; // ✅ CHỈ TIỀN PHÒNG (không thuế/phí)
+  paymentMethodId?: string | null;
+  status?: number; // ✅ Pending = 0
+};
+
+// ✅ POST /api/PaymentRecord -> trả về Guid (string)
+async function createPaymentRecord(dto: PaymentRecordCreateDto) {
+  const res = await api.post<string>(withApiPrefix("/PaymentRecord"), dto, {
+    headers: {
+      accept: "*/*",
+      "Content-Type": "application/json",
+    },
+  });
   return res.data;
 }
 
@@ -91,7 +112,6 @@ export default function BookingPage() {
   const [profileErr, setProfileErr] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserPersonalInfoDto | null>(null);
 
-  // selected room (from navigate state)
   const selectedRoom = state.selectedRoom;
 
   // dates & guests
@@ -132,20 +152,11 @@ export default function BookingPage() {
 
   const roomPrice = selectedRoom?.price ?? null;
 
-  const baseRoomTotal = useMemo(() => {
+  // ✅ CHỈ TIỀN PHÒNG
+  const roomTotal = useMemo(() => {
     if (roomPrice == null) return null;
     return roomPrice * nights * Math.max(1, roomsCount);
   }, [roomPrice, nights, roomsCount]);
-
-  const serviceFee = useMemo(() => {
-    if (baseRoomTotal == null) return null;
-    return Math.round(baseRoomTotal * 0.1);
-  }, [baseRoomTotal]);
-
-  const grandTotal = useMemo(() => {
-    if (baseRoomTotal == null) return null;
-    return baseRoomTotal + (serviceFee ?? 0);
-  }, [baseRoomTotal, serviceFee]);
 
   // Load accom detail
   useEffect(() => {
@@ -174,7 +185,7 @@ export default function BookingPage() {
     }
   }, [checkIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✅ Load profile giống ProfilePage (và set thẳng vào input)
+  // ✅ Load profile giống ProfilePage
   useEffect(() => {
     if (!userId) {
       setProfileErr("Chưa có userId. Bạn hãy đăng nhập lại.");
@@ -193,16 +204,17 @@ export default function BookingPage() {
 
         setProfile(dto);
 
-        // ✅ robust mapping (phòng khi backend field khác tên)
         const fullName = String((dto as any)?.fullName ?? "").trim();
-        const email = String(
+
+        const rawEmail = String(
           (dto as any)?.email ?? (dto as any)?.userName ?? ""
         ).trim();
+        const email = rawEmail.includes("@") ? rawEmail : "";
+
         const phone = String(
           (dto as any)?.phoneNumber ?? (dto as any)?.phone ?? ""
         ).trim();
 
-        // ✅ set trực tiếp (vì disabled nên không sợ overwrite)
         setContactName(fullName);
         setContactEmail(email);
         setContactPhone(phone);
@@ -235,8 +247,8 @@ export default function BookingPage() {
 
   const needUpdateProfile = Object.values(invalidProfile).some(Boolean);
 
-  // ✅ bấm tiếp tục -> gọi VNPAY và redirect
-  // ✅ bấm tiếp tục -> gọi VNPAY và redirect
+  // ✅ bấm tiếp tục -> tạo PaymentRecord(Pending) -> gọi VNPAY -> redirect
+  // ✅ BỎ THUẾ & PHÍ: amount = roomTotal
   const onSubmit = async () => {
     setSubmitErr(null);
     setPayErr(null);
@@ -263,24 +275,41 @@ export default function BookingPage() {
       return;
     }
 
-    // ✅ SỐ TIỀN GỬI VNPAY: đã gồm thuế & phí
-    // grandTotal = baseRoomTotal + serviceFee
-    const amount = grandTotal;
+    const amount = roomTotal; // ✅ chỉ tiền phòng
 
     if (amount == null || !Number.isFinite(amount) || amount <= 0) {
-      setSubmitErr(
-        "Không xác định được tổng tiền (đã gồm thuế & phí) để thanh toán."
-      );
+      setSubmitErr("Không xác định được tiền phòng để thanh toán.");
+      return;
+    }
+
+    if (!selectedRoom.roomId) {
+      setSubmitErr("RoomId không hợp lệ.");
       return;
     }
 
     try {
       setPaying(true);
 
-      // body chỉ là 1 số
+      // 1) tạo PaymentRecord (Pending)
+      const paymentRecordId = await createPaymentRecord({
+        roomId: selectedRoom.roomId,
+        roomName: selectedRoom.roomName ?? null,
+        price: Math.round(amount),
+        paymentMethodId: null,
+        status: 0, // ✅ Pending
+      });
+
+      localStorage.setItem("pendingPaymentRecordId", String(paymentRecordId));
+
+      // 2) gọi VNPAY (body chỉ là 1 số)
       const data = await createVnpay(Math.round(amount));
       if (!data?.paymentUrl) throw new Error("Không nhận được paymentUrl");
 
+      if (data.paymentId != null) {
+        localStorage.setItem("pendingVnpayPaymentId", String(data.paymentId));
+      }
+
+      // 3) redirect sang VNPAY
       window.location.href = data.paymentUrl;
     } catch (e: any) {
       setPayErr(
@@ -358,7 +387,6 @@ export default function BookingPage() {
       {TopBar}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* ✅ trạng thái hồ sơ */}
         {profileErr ? (
           <div className="mt-4 rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
             {String(profileErr)}
@@ -386,7 +414,6 @@ export default function BookingPage() {
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* LEFT */}
           <div className="lg:col-span-8 space-y-5">
-            {/* Contact */}
             <section className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
               <div className="font-extrabold text-slate-900">
                 Liên hệ đặt chỗ
@@ -574,9 +601,10 @@ export default function BookingPage() {
             </section>
           </div>
 
-          {/* RIGHT (sticky summary) */}
+          {/* RIGHT */}
           <div className="lg:col-span-4">
             <div className="sticky top-[72px] space-y-4">
+              {/* summary */}
               <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
                 <div className="text-xs font-bold text-sky-700">
                   {selectedRoom ? "Bạn đã chọn phòng" : "Chưa chọn phòng"}
@@ -685,6 +713,7 @@ export default function BookingPage() {
                 </div>
               </div>
 
+              {/* price detail (NO tax/fee) */}
               <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
                 <div className="flex items-center justify-between">
                   <div className="font-extrabold text-slate-900">
@@ -697,14 +726,7 @@ export default function BookingPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Giá phòng</span>
                     <span className="font-bold text-slate-900">
-                      {baseRoomTotal == null ? "—" : formatVnd(baseRoomTotal)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Thuế & phí</span>
-                    <span className="font-bold text-slate-900">
-                      {serviceFee == null ? "—" : formatVnd(serviceFee)}
+                      {roomTotal == null ? "—" : formatVnd(roomTotal)}
                     </span>
                   </div>
 
@@ -713,7 +735,7 @@ export default function BookingPage() {
                       Tổng cộng
                     </span>
                     <span className="text-orange-500 font-extrabold text-lg">
-                      {grandTotal == null ? "—" : formatVnd(grandTotal)}
+                      {roomTotal == null ? "—" : formatVnd(roomTotal)}
                     </span>
                   </div>
                 </div>
