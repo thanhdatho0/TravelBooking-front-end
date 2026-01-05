@@ -8,6 +8,10 @@ import AccommodationDetailPage from "./pages/AccommodationDetailPage";
 import ProfilePage from "./pages/ProfilePage";
 import ScrollToTop from "./components/ScrollToTop";
 import BookingPage from "./pages/BookingPage";
+import VnpayCallbackPage from "./pages/VnpayCallbackPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import PaymentVnpayReturnPage from "./pages/PaymentVnpayReturnPage";
+import PaymentFailPage from "./pages/PaymentFailPage";
 
 function App() {
   return (
@@ -32,6 +36,16 @@ function App() {
           />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/booking/:accomId" element={<BookingPage />} />
+          <Route
+            path="/payment/vnpay-callback"
+            element={<VnpayCallbackPage />}
+          />
+          <Route path="/payment/success" element={<PaymentSuccessPage />} />
+          <Route
+            path="/payment/vnpay-return"
+            element={<PaymentVnpayReturnPage />}
+          />
+          <Route path="/payment/fail" element={<PaymentFailPage />} />
         </Routes>
       </main>
 

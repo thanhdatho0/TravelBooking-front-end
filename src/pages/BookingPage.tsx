@@ -16,17 +16,17 @@ function formatVnd(v?: number | null) {
   return new Intl.NumberFormat("vi-VN").format(v) + " VND";
 }
 
-type BookingRoomState = {
+interface BookingRoomState {
   roomId: string;
   roomName: string;
   price?: number | null;
   breakfast?: boolean;
   accomName?: string;
-};
+}
 
-type LocationState = {
+interface LocationState {
   selectedRoom?: BookingRoomState;
-};
+}
 
 function classNames(...s: Array<string | false | null | undefined>) {
   return s.filter(Boolean).join(" ");
@@ -55,10 +55,10 @@ function formatDateVi(d: Date) {
 }
 
 // ✅ response từ /Vnpay
-type VnpayResponse = {
+interface VnpayResponse {
   paymentId?: unknown;
   paymentUrl: string;
-};
+}
 
 // ✅ POST /api/Vnpay body = number
 async function createVnpay(amountVnd: number) {
@@ -74,15 +74,22 @@ async function createVnpay(amountVnd: number) {
   return res.data;
 }
 
-// ✅ PaymentRecord create DTO (khớp controller bạn đưa)
-// ✅ thêm status để set Pending = 0 (hết lỗi TS)
-type PaymentRecordCreateDto = {
+// ✅ PaymentRecord create DTO (FE)
+// ✅ Update: thêm checkInDate/checkOutDate theo data mới bạn thêm
+interface PaymentRecordCreateDto {
   roomId: string;
+
+  // (giữ lại field cũ nếu backend vẫn dùng; extra field JSON thường không làm lỗi)
   roomName?: string | null;
-  price: number; // ✅ CHỈ TIỀN PHÒNG (không thuế/phí)
+  price?: number;
+
   paymentMethodId?: string | null;
-  status?: number; // ✅ Pending = 0
-};
+  status?: number; // Pending = 0
+
+  // ✅ mới thêm
+  checkInDate: string; // "YYYY-MM-DD"
+  checkOutDate: string; // "YYYY-MM-DD"
+}
 
 // ✅ POST /api/PaymentRecord -> trả về Guid (string)
 async function createPaymentRecord(dto: PaymentRecordCreateDto) {
@@ -110,7 +117,6 @@ export default function BookingPage() {
   // ✅ profile
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileErr, setProfileErr] = useState<string | null>(null);
-  const [profile, setProfile] = useState<UserPersonalInfoDto | null>(null);
 
   const selectedRoom = state.selectedRoom;
 
@@ -199,10 +205,8 @@ export default function BookingPage() {
         setProfileErr(null);
         setProfileLoading(true);
 
-        const dto = await getUserById(userId);
+        const dto: UserPersonalInfoDto = await getUserById(userId);
         if (!mounted) return;
-
-        setProfile(dto);
 
         const fullName = String((dto as any)?.fullName ?? "").trim();
 
@@ -248,7 +252,6 @@ export default function BookingPage() {
   const needUpdateProfile = Object.values(invalidProfile).some(Boolean);
 
   // ✅ bấm tiếp tục -> tạo PaymentRecord(Pending) -> gọi VNPAY -> redirect
-  // ✅ BỎ THUẾ & PHÍ: amount = roomTotal
   const onSubmit = async () => {
     setSubmitErr(null);
     setPayErr(null);
@@ -290,13 +293,20 @@ export default function BookingPage() {
     try {
       setPaying(true);
 
-      // 1) tạo PaymentRecord (Pending)
+      // 1) tạo PaymentRecord (Pending = 0) + ✅ checkInDate/checkOutDate
       const paymentRecordId = await createPaymentRecord({
         roomId: selectedRoom.roomId,
+
+        // (giữ lại nếu backend vẫn dùng)
         roomName: selectedRoom.roomName ?? null,
         price: Math.round(amount),
+
         paymentMethodId: null,
-        status: 0, // ✅ Pending
+        status: 0,
+
+        // ✅ mới thêm theo yêu cầu của bạn
+        checkInDate: checkIn,
+        checkOutDate: checkOut,
       });
 
       localStorage.setItem("pendingPaymentRecordId", String(paymentRecordId));
@@ -309,7 +319,13 @@ export default function BookingPage() {
         localStorage.setItem("pendingVnpayPaymentId", String(data.paymentId));
       }
 
-      // 3) redirect sang VNPAY
+      // 3) lưu trang để quay lại nếu fail
+      localStorage.setItem(
+        "pendingReturnUrl",
+        window.location.pathname + window.location.search
+      );
+
+      // 4) redirect sang VNPAY
       window.location.href = data.paymentUrl;
     } catch (e: any) {
       setPayErr(

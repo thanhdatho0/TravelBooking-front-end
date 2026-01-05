@@ -23,7 +23,6 @@ export default function ProfilePage() {
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState<string>(""); // yyyy-mm-dd
   const [sex, setSex] = useState<"male" | "female" | "unset">("unset");
-  const [phoneNumber, setPhoneNumber] = useState<string>(""); // ✅ new
 
   useEffect(() => {
     if (!userId) {
@@ -45,10 +44,6 @@ export default function ProfilePage() {
         setData(dto);
         setFullName(dto.fullName ?? "");
         setBirthDate(dto.birthDate ?? "");
-
-        // ✅ new
-        setPhoneNumber(dto.phoneNumber ?? "");
-
         if (dto.sex === true) setSex("male");
         else if (dto.sex === false) setSex("female");
         else setSex("unset");
@@ -78,9 +73,6 @@ export default function ProfilePage() {
         fullName: fullName.trim(),
         birthDate: birthDate ? birthDate : null,
         sex: sex === "unset" ? null : sex === "male",
-
-        // ✅ new
-        phoneNumber: phoneNumber.trim() || null,
       });
 
       setOk("Lưu hồ sơ thành công!");
@@ -145,23 +137,6 @@ export default function ProfilePage() {
                 disabled
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none"
               />
-            </div>
-
-            {/* ✅ new: Phone number */}
-            <div>
-              <label className="block text-sm font-bold text-slate-800">
-                Số điện thoại
-              </label>
-              <input
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="Nhập số điện thoại"
-                inputMode="tel"
-                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-sky-200"
-              />
-              <div className="mt-1 text-xs text-slate-500">
-                * Nên nhập dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx
-              </div>
             </div>
 
             <div>
