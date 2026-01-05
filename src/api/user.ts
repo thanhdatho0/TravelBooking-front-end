@@ -2,15 +2,17 @@ import { api } from "./api";
 
 export type UserPersonalInfoDto = {
   fullName: string;
-  birthDate?: string | null; // DateOnly => "YYYY-MM-DD"
-  sex?: boolean | null; // true/false
+  birthDate?: string | null;
+  sex?: boolean | null;
   email: string;
+  phoneNumber?: string | null; // ✅ thêm dòng này
 };
 
 export type UserUpdateDto = {
   fullName: string;
   birthDate?: string | null;
   sex?: boolean | null;
+  phoneNumber?: string | null;
 };
 
 export async function getUserById(id: string) {

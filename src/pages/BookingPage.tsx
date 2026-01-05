@@ -8,6 +8,9 @@ import {
 // ✅ lấy profile giống ProfilePage
 import { getUserById, type UserPersonalInfoDto } from "../api/user";
 
+// ✅ gọi VNPAY bằng axios instance của bạn
+import { api, withApiPrefix } from "../api/api";
+
 function formatVnd(v?: number | null) {
   if (v == null) return "Liên hệ";
   return new Intl.NumberFormat("vi-VN").format(v) + " VND";
@@ -49,6 +52,26 @@ function formatDateVi(d: Date) {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+// ✅ response từ /Vnpay
+type VnpayResponse = {
+  paymentId?: unknown; // rất lớn, FE không nên dùng
+  paymentUrl: string;
+};
+
+// ✅ POST /api/Vnpay body = number
+async function createVnpay(amountVnd: number) {
+  const amount = Math.round(amountVnd);
+
+  const res = await api.post<VnpayResponse>(withApiPrefix("/Vnpay"), amount, {
+    headers: {
+      accept: "*/*",
+      "Content-Type": "application/json",
+    },
+  });
+
+  return res.data;
 }
 
 export default function BookingPage() {
@@ -95,6 +118,10 @@ export default function BookingPage() {
 
   // validation
   const [submitErr, setSubmitErr] = useState<string | null>(null);
+
+  // ✅ payment states
+  const [paying, setPaying] = useState(false);
+  const [payErr, setPayErr] = useState<string | null>(null);
 
   const nights = useMemo(() => {
     const a = new Date(checkIn);
@@ -147,7 +174,7 @@ export default function BookingPage() {
     }
   }, [checkIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✅ Load profile giống ProfilePage
+  // ✅ Load profile giống ProfilePage (và set thẳng vào input)
   useEffect(() => {
     if (!userId) {
       setProfileErr("Chưa có userId. Bạn hãy đăng nhập lại.");
@@ -166,11 +193,16 @@ export default function BookingPage() {
 
         setProfile(dto);
 
-        const fullName = (dto.fullName ?? "").trim();
-        const email = (dto.email ?? "").trim();
-        const phone = (dto.phoneNumber ?? "").trim();
+        // ✅ robust mapping (phòng khi backend field khác tên)
+        const fullName = String((dto as any)?.fullName ?? "").trim();
+        const email = String(
+          (dto as any)?.email ?? (dto as any)?.userName ?? ""
+        ).trim();
+        const phone = String(
+          (dto as any)?.phoneNumber ?? (dto as any)?.phone ?? ""
+        ).trim();
 
-        // ✅ set 1 lần từ profile
+        // ✅ set trực tiếp (vì disabled nên không sợ overwrite)
         setContactName(fullName);
         setContactEmail(email);
         setContactPhone(phone);
@@ -203,8 +235,11 @@ export default function BookingPage() {
 
   const needUpdateProfile = Object.values(invalidProfile).some(Boolean);
 
-  const onSubmit = () => {
+  // ✅ bấm tiếp tục -> gọi VNPAY và redirect
+  // ✅ bấm tiếp tục -> gọi VNPAY và redirect
+  const onSubmit = async () => {
     setSubmitErr(null);
+    setPayErr(null);
 
     if (profileLoading) {
       setSubmitErr("Đang tải hồ sơ, vui lòng thử lại sau vài giây.");
@@ -228,8 +263,35 @@ export default function BookingPage() {
       return;
     }
 
-    // TODO: call booking API ở đây
-    alert("OK ✅ (Demo UI) — Bạn có thể gọi API tạo booking tại đây.");
+    // ✅ SỐ TIỀN GỬI VNPAY: đã gồm thuế & phí
+    // grandTotal = baseRoomTotal + serviceFee
+    const amount = grandTotal;
+
+    if (amount == null || !Number.isFinite(amount) || amount <= 0) {
+      setSubmitErr(
+        "Không xác định được tổng tiền (đã gồm thuế & phí) để thanh toán."
+      );
+      return;
+    }
+
+    try {
+      setPaying(true);
+
+      // body chỉ là 1 số
+      const data = await createVnpay(Math.round(amount));
+      if (!data?.paymentUrl) throw new Error("Không nhận được paymentUrl");
+
+      window.location.href = data.paymentUrl;
+    } catch (e: any) {
+      setPayErr(
+        e?.response?.data?.message ??
+          e?.response?.data ??
+          e?.message ??
+          "Tạo thanh toán thất bại"
+      );
+    } finally {
+      setPaying(false);
+    }
   };
 
   if (!accomId) return null;
@@ -296,15 +358,6 @@ export default function BookingPage() {
       {TopBar}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="rounded-2xl bg-sky-50 border border-sky-100 px-4 py-3 text-sm text-sky-800 flex items-center justify-between gap-3">
-          <div className="font-bold">
-            Đăng nhập hoặc đăng ký để có giá rẻ hơn và nhiều ưu đãi hơn!
-          </div>
-          <button className="text-sm font-extrabold text-sky-700 hover:text-sky-800">
-            Đăng nhập/Đăng ký
-          </button>
-        </div>
-
         {/* ✅ trạng thái hồ sơ */}
         {profileErr ? (
           <div className="mt-4 rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
@@ -346,6 +399,12 @@ export default function BookingPage() {
               {submitErr ? (
                 <div className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700 border border-rose-200">
                   {submitErr}
+                </div>
+              ) : null}
+
+              {payErr ? (
+                <div className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700 border border-rose-200">
+                  {String(payErr)}
                 </div>
               ) : null}
 
@@ -663,12 +722,12 @@ export default function BookingPage() {
                   type="button"
                   onClick={onSubmit}
                   className="mt-4 w-full rounded-xl bg-sky-600 text-white font-extrabold py-3 hover:bg-sky-700 active:scale-[0.99] transition disabled:opacity-60"
-                  disabled={!selectedRoom || profileLoading}
+                  disabled={!selectedRoom || profileLoading || paying}
                   title={
                     !selectedRoom ? "Vui lòng chọn phòng trước" : "Tiếp tục"
                   }
                 >
-                  Tiếp tục
+                  {paying ? "Đang chuyển tới VNPAY..." : "Tiếp tục"}
                 </button>
 
                 <div className="mt-3 text-xs text-slate-500">

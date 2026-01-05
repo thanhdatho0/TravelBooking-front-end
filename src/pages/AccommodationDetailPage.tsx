@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import ImageCarousel from "../components/AccommodationDetail/ImageCarousel";
 import {
   getAccommodationDetail,
@@ -40,7 +40,21 @@ function displayUserName(rv: ReviewDto) {
   return normalizeDisplayName(rv.userName ?? rv.createdBy ?? "User");
 }
 
-function RoomCategoryBlock({ rc }: { rc: RoomCategoryDto }) {
+type SelectRoomPayload = {
+  roomId: string;
+  roomName: string;
+  price?: number | null;
+  breakfast?: boolean;
+  accomName?: string;
+};
+
+function RoomCategoryBlock({
+  rc,
+  onSelectRoom,
+}: {
+  rc: RoomCategoryDto;
+  onSelectRoom: (p: SelectRoomPayload) => void;
+}) {
   const img = rc.images?.[0]?.url ?? null;
 
   return (
@@ -155,7 +169,20 @@ function RoomCategoryBlock({ rc }: { rc: RoomCategoryDto }) {
                   </div>
 
                   <div className="col-span-1 text-right">
-                    <button className="rounded-lg bg-sky-600 text-white px-3 py-2 text-sm font-bold hover:bg-sky-700 active:scale-[0.99] transition">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSelectRoom({
+                          roomId: r.id as string,
+                          roomName: r.name as string,
+                          price: r.price ?? null,
+                          breakfast: !!r.breakfast,
+                        })
+                      }
+                      disabled={!r.available}
+                      className="rounded-lg bg-sky-600 text-white px-3 py-2 text-sm font-bold hover:bg-sky-700 active:scale-[0.99] transition disabled:opacity-60 disabled:cursor-not-allowed"
+                      title={r.available ? "Chọn phòng" : "Phòng đã hết"}
+                    >
                       Chọn
                     </button>
                   </div>
@@ -195,6 +222,10 @@ function RoomCategoryBlock({ rc }: { rc: RoomCategoryDto }) {
 
 export default function AccommodationDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
+  // refs for scroll
+  const roomSectionRef = useRef<HTMLDivElement | null>(null);
 
   const [data, setData] = useState<AccomDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -364,6 +395,25 @@ export default function AccommodationDetailPage() {
     return (data?.images ?? []).map((x: any) => x?.url).filter(Boolean);
   }, [data]);
 
+  const scrollToRooms = () => {
+    roomSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  const onSelectRoom = (p: SelectRoomPayload) => {
+    if (!id) return;
+    navigate(`/booking/${id}`, {
+      state: {
+        selectedRoom: {
+          ...p,
+          accomName: data?.name,
+        },
+      },
+    });
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -426,7 +476,11 @@ export default function AccommodationDetailPage() {
                   {formatVnd(minPrice)}
                 </div>
 
-                <button className="mt-3 w-full rounded-xl bg-orange-500 text-white font-extrabold py-3 hover:bg-orange-600 active:scale-[0.99] transition">
+                <button
+                  type="button"
+                  onClick={scrollToRooms}
+                  className="mt-3 w-full rounded-xl bg-orange-500 text-white font-extrabold py-3 hover:bg-orange-600 active:scale-[0.99] transition"
+                >
                   Chọn phòng
                 </button>
 
@@ -491,13 +545,17 @@ export default function AccommodationDetailPage() {
         </div>
 
         {/* ROOM CATEGORIES */}
-        <div className="mt-8">
+        <div ref={roomSectionRef} className="mt-8 scroll-mt-24">
           <div className="text-xl font-extrabold text-slate-900 mb-4">
             Danh sách loại phòng
           </div>
           <div className="space-y-6">
             {(data.roomCategories ?? []).map((rc) => (
-              <RoomCategoryBlock key={rc.id} rc={rc} />
+              <RoomCategoryBlock
+                key={rc.id}
+                rc={rc}
+                onSelectRoom={onSelectRoom}
+              />
             ))}
           </div>
         </div>

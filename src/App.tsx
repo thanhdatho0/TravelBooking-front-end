@@ -7,6 +7,7 @@ import PageFooter from "./components/PageFooter/pageFooter";
 import AccommodationDetailPage from "./pages/AccommodationDetailPage";
 import ProfilePage from "./pages/ProfilePage";
 import ScrollToTop from "./components/ScrollToTop";
+import BookingPage from "./pages/BookingPage";
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
             element={<AccommodationDetailPage />}
           />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/booking/:accomId" element={<BookingPage />} />
         </Routes>
       </main>
 
