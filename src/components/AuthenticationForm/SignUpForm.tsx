@@ -23,10 +23,25 @@ const SignUpForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
+  const validateFullName = (name: string): boolean => {
+    // Regex kiểm tra tên:
+    // ^: Bắt đầu chuỗi
+    // [\p{L}\s]+: Ít nhất một hoặc nhiều ký tự chữ cái (bao gồm Unicode như tiếng Việt) HOẶC khoảng trắng
+    // $: Kết thúc chuỗi
+    // u: cờ Unicode
+    const regex = /^[\p{L}\s]{2,}$/u;
+
+    // Loại bỏ khoảng trắng ở đầu/cuối trước khi kiểm tra độ dài và regex
+    const trimmedName = name.trim();
+
+    // Kiểm tra độ dài tối thiểu 2 ký tự VÀ khớp với regex (chỉ chứa chữ cái và khoảng trắng)
+    return trimmedName.length >= 2 && regex.test(trimmedName);
+  };
+
   const validateForm = (): boolean => {
     const emailResult = validateEmail(email);
     const passwordResult = validatePassword(password);
-    const fullNameValid = fullName.trim().length >= 2;
+    const fullNameValid = validateFullName(fullName);
 
     // Nếu có lỗi → không cho submit
     if (!emailResult.isValid || !passwordResult.isValid || !fullNameValid) {
@@ -47,15 +62,18 @@ const SignUpForm = ({
 
     // Giả lập API call
     try {
-      const res = await fetch("https://localhost:7228/api/Auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName, // Giả sử API cần field này
-          email,
-          password,
-        }),
-      });
+      const res = await fetch(
+        "https://4ab83ec2e093.ngrok-free.app/api/Auth/pre-register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName, // Giả sử API cần field này
+            email,
+            password,
+          }),
+        }
+      );
 
       if (res.ok) {
         alert("Đăng ký thành công!");

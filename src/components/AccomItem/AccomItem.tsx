@@ -6,6 +6,7 @@ interface AccomItemProps {
   image?: string;
   starCount?: number; // 3,4,5 sao
   description?: string;
+  score?: number; // độ khớp tìm kiếm
 }
 
 const AccomItem = ({
@@ -16,55 +17,72 @@ const AccomItem = ({
   image,
   starCount = 5,
   description = "",
+  score = 0,
 }: AccomItemProps) => {
   const stars = Array(starCount).fill(0);
-  return (
-    <div className="group shadow-md w-full rounded-md pb-5! bg-white overflow-hidden cursor-pointer transition-transform hover:-translate-y-1">
-      <div className="relative">
-        <div className="relative items-image">
-          <img
-            src={
-              image ||
-              "https://ik.imagekit.io/tvlk/apr-asset/dgXfoyh24ryQLRcGq00cIdKHRmotrWLNlvG-TxlcLxGkiDwaUSggleJNPRgIHCX6/hotel/asset/20031457-da81191557ce8f90958fb16348c3445c.png?_src=imagekit&tr=c-at_max,f-jpg,fo-auto,h-332,pr-true,q-80,w-480"
-            }
-            alt={name}
-            className="rounded-t-md"
-          />
-          <div className="absolute inset-0 bg-black/40 text-white p-3! opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-md flex flex-col justify-center items-center">
-            <h4 className="text-sky-400 font-bold text-sm mb-2! border-b border-gray-500 pb-1! w-full text-center">
-              Thông tin
-            </h4>
 
-            {/* Vẫn giữ class scrollbar xịn xò */}
-            <div className="w-full h-full overflow-y-auto text-xs leading-relaxed text-justify custom-scrollbar px-2!">
+  return (
+    <div className="shadow-md w-full rounded-md bg-white overflow-hidden cursor-pointer transition-transform hover:-translate-y-1 flex flex-col md:flex-row">
+      {/* Phần hình ảnh bên trái */}
+      <div className="relative md:w-80 shrink-0">
+        <img
+          src={
+            image ||
+            "https://ik.imagekit.io/tvlk/apr-asset/dgXfoyh24ryQLRcGq00cIdKHRmotrWLNlvG-TxlcLxGkiDwaUSggleJNPRgIHCX6/hotel/asset/20031457-da81191557ce8f90958fb16348c3445c.png?_src=imagekit&tr=c-at_max,f-jpg,fo-auto,h-332,pr-true,q-80,w-480"
+          }
+          alt={name}
+          className="w-full h-64 md:h-full object-cover rounded-t-md md:rounded-l-md md:rounded-tr-none"
+        />
+      </div>
+
+      {/* Phần thông tin bên phải */}
+      <div className="flex-1 p-5! flex flex-col justify-between min-h-0">
+        <div className="flex-1 flex flex-col">
+          {/* Tên khách sạn */}
+          <h3 className="font-semibold text-lg capitalize mb-2!">{name}</h3>
+
+          {/* Số sao */}
+          <div className="flex mb-3!">
+            {stars.map((_, index) => (
+              <i
+                key={index}
+                className="fa-solid fa-star text-yellow-300 mr-1!"
+              ></i>
+            ))}
+          </div>
+
+          {/* Rating + số review */}
+          <div className="flex items-center mb-4! text-sm">
+            <i className="fa-solid fa-dove text-sky-600 mr-1!"></i>
+            <span className="text-sky-600 font-medium mr-1!">{rating}/10</span>
+            <span className="text-gray-600">({reviewCount} đánh giá)</span>
+          </div>
+
+          {/* Mô tả - luôn hiển thị, giới hạn chiều cao và có scroll nếu dài */}
+          <div className="flex-1 overflow-hidden mb-4!">
+            <div
+              className="text-gray-700 text-sm leading-relaxed text-justify overflow-y-auto custom-scrollbar pr-2!"
+              style={{ maxHeight: "120px" }} // khoảng 5-6 dòng, tùy font size
+            >
               {description || "Chưa có mô tả chi tiết."}
             </div>
           </div>
         </div>
-        <div className="px-3! py-3!">
-          <h3 className="font-semibold my-1! capitalize">{name}</h3>
-          <div className="flex my-1!">
-            {stars.map((_, index) => (
-              <i key={index} className="fa-solid fa-star text-yellow-300"></i>
-            ))}
+
+        {/* Phần giá và thông tin phụ */}
+        <div>
+          {/* Giá */}
+          <div className="text-xl font-bold text-[#f96d01] mb-1!">
+            {typeof price === "number" ? price.toLocaleString("vi-VN") : price}{" "}
+            VND
           </div>
-          <div className="my-1!">
-            <i className="fa-solid fa-dove text-sky-600"></i>
-            <span className="text-sky-600 mr-1!">{rating}/10</span>
-            <span>({reviewCount})</span>
+          <div className="text-xs text-gray-500 mb-2!">
+            Chưa bao gồm thuế và phí
           </div>
-          <div>
-            <span className="text-[#f96d01]">
-              {typeof price === "number"
-                ? price.toLocaleString("vi-VN")
-                : price}{" "}
-              VND
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-400 text-xs">
-              Chưa bao gồm thuế và phí
-            </span>
+
+          {/* Độ khớp tìm kiếm */}
+          <div className="text-xs text-gray-400">
+            Độ khớp tìm kiếm: {score.toFixed(2)}
           </div>
         </div>
       </div>

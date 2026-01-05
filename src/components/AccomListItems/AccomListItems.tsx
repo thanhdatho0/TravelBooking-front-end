@@ -44,13 +44,13 @@ const AccomListItems = ({
     );
   }
   return (
-    <div className="grid grid-cols-4 gap-10">
+    <div className="grid grid-cols-1 gap-10">
       {items.map((item) => {
         const randomPrice = Math.floor(
           Math.random() * (2000000 - 300000) + 300000
         );
         const randomStar = Math.floor(Math.random() * 3) + 3; // 3 đến 5 sao
-        const randomRating = (item.score * 10).toFixed(1); // Giả lập rating từ score AI
+        const randomRating = (randomStar * 10).toFixed(1); // Giả lập rating từ score AI
 
         return (
           <AccomItem
@@ -65,6 +65,7 @@ const AccomListItems = ({
             reviewCount={Math.floor(Math.random() * 500)} // Random số review
             starCount={randomStar}
             description={item.title}
+            score={item.score}
           />
         );
       })}

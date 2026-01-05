@@ -68,7 +68,7 @@ export default function FormInput({
 
     try {
       const res = await fetch(
-        `https://localhost:7228/api/Auth/validate-email?email=${encodeURIComponent(
+        `https://4ab83ec2e093.ngrok-free.app/api/Auth/validate-email?email=${encodeURIComponent(
           email
         )}`,
         {

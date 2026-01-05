@@ -63,11 +63,14 @@ const EmailConfirm = ({ email, onBack, onSuccess }: EmailConfirmProps) => {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("https://localhost:7228/api/Auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Email: email, Code: code }),
-      });
+      const res = await fetch(
+        "https://4ab83ec2e093.ngrok-free.app/api/Auth/verify-email",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ Email: email, Code: code }),
+        }
+      );
 
       if (res.ok) {
         alert("Xác thực thành công!");
@@ -104,11 +107,14 @@ const EmailConfirm = ({ email, onBack, onSuccess }: EmailConfirmProps) => {
     setIsResending(true); // Optional: disable toàn bộ nếu cần
 
     try {
-      const res = await fetch("https://localhost:7228/api/Auth/pre-register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Email: email }),
-      });
+      const res = await fetch(
+        "https://4ab83ec2e093.ngrok-free.app/api/Auth/pre-register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ Email: email }),
+        }
+      );
 
       if (res.ok) {
         alert("Đã gửi lại mã xác minh!");

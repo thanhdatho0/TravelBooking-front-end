@@ -37,11 +37,14 @@ const LoginOrCreate = ({
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("https://localhost:7228/api/Auth/pre-register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Email: email.trim() }),
-      });
+      const res = await fetch(
+        "https://4ab83ec2e093.ngrok-free.app/api/Auth/pre-register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ Email: email.trim() }),
+        }
+      );
 
       if (res.ok) {
         onContinueToConfirm?.(email.trim());
