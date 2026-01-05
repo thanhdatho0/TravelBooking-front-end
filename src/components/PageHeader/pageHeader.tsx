@@ -116,7 +116,12 @@ const PageHeader = () => {
         <Link
           to="/"
           className="shrink-0"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onClick={(e) => {
+            e.preventDefault();
+
+            // luôn về home + reload để reset state (kể cả đang ở /search, /profile,...)
+            window.location.href = "/"; // hoặc window.location.assign("/")
+          }}
           aria-label="Về trang chủ"
           title="Về trang chủ"
         >
