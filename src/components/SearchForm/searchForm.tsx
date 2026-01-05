@@ -56,11 +56,11 @@ export default function SearchForm({
   };
 
   return (
-    <div className="w-[50vw] min-h-50 mx-auto! shadow-sm rounded-md bg-white z-20 -mt-10!">
-      <div className="w-full bg-[#f7f9fa] h-10 rounded-t-sm px-2.5! py-2!">
+    <div className="w-[50vw] min-h-50 mx-auto mt-6 bg-white rounded-xl border border-gray-200 shadow-lg ring-1 ring-black/5 overflow-hidden relative z-20">
+      <div className="w-full bg-white h-12 px-4 py-3 border-b border-gray-100">
         <a
           href="#"
-          className="flex items-center gap-1.5 h-full font-bold text-md"
+          className="flex items-center gap-2 h-full font-bold text-md"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -80,12 +80,13 @@ export default function SearchForm({
         </a>
       </div>
 
-      <form className="p-2.5! w-full" onSubmit={handleSearch}>
-        <div className="single-input p-2!">
-          <label className="block text-md font-medium text-gray-700 mb-1!">
+      <form className="p-4 w-full" onSubmit={handleSearch}>
+        <div className="single-input p-2">
+          <label className="block text-md font-medium text-gray-700 mb-2">
             Tìm kiếm nơi lưu trú theo mô tả của bạn:
           </label>
-          <div className="flex gap-1.5 p-1.5! h-10 border border-gray-300 rounded-sm shadow-sm items-center focus-within:ring-1 focus-within:ring-sky-500">
+
+          <div className="flex gap-2 p-2 h-11 border border-gray-300 rounded-md shadow-sm items-center bg-white focus-within:ring-2 focus-within:ring-sky-500 focus-within:border-sky-500">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -105,10 +106,11 @@ export default function SearchForm({
                 d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
               />
             </svg>
+
             <input
               type="text"
               placeholder="Mô tả chi tiết về nơi bạn muốn đến..."
-              className="flex-1 outline-none text-md"
+              className="flex-1 outline-none text-md bg-transparent"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
@@ -116,10 +118,10 @@ export default function SearchForm({
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end px-2 pb-2">
           <button
             type="submit"
-            className="bg-sky-600 text-white px-6! py-2! rounded-sm text-md font-medium hover:bg-sky-700 transition-colors"
+            className="bg-sky-600 text-white px-6 py-2 rounded-md text-md font-medium hover:bg-sky-700 transition-colors shadow-sm"
           >
             Tìm kiếm
           </button>

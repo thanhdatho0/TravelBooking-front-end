@@ -21,12 +21,17 @@ function App() {
 
       <main className="w-full">
         <Routes>
+          // App.jsx (Home route)
           <Route
             path="/"
             element={
               <>
                 <Slider />
-                <PageBody />
+
+                {/* Search form nằm dưới slider */}
+                <div className="w-full mt-15">
+                  <PageBody />
+                </div>
               </>
             }
           />

@@ -181,9 +181,6 @@ const PageHeader = () => {
                       <div className="text-sm font-bold text-slate-900">
                         Thông tin cá nhân
                       </div>
-                      <div className="text-xs text-slate-500">
-                        Xem & cập nhật hồ sơ
-                      </div>
                     </div>
                   </button>
 
@@ -201,9 +198,6 @@ const PageHeader = () => {
                     <div>
                       <div className="text-sm font-bold text-rose-700">
                         Thoát tài khoản
-                      </div>
-                      <div className="text-xs text-rose-600/80">
-                        Đăng xuất khỏi hệ thống
                       </div>
                     </div>
                   </button>

@@ -71,6 +71,9 @@ export default function ProfilePage() {
   const [birthDate, setBirthDate] = useState<string>(""); // yyyy-mm-dd
   const [sex, setSex] = useState<"male" | "female" | "unset">("unset");
 
+  // ✅ NEW: phone
+  const [phoneNumber, setPhoneNumber] = useState("");
+
   // ✅ payment record list
   const [payLoading, setPayLoading] = useState(false);
   const [payErr, setPayErr] = useState<string | null>(null);
@@ -96,6 +99,13 @@ export default function ProfilePage() {
         setData(dto);
         setFullName(dto.fullName ?? "");
         setBirthDate(dto.birthDate ?? "");
+
+        // ✅ NEW: map phone robust
+        const phone = String(
+          (dto as any)?.phoneNumber ?? (dto as any)?.phone ?? ""
+        ).trim();
+        setPhoneNumber(phone);
+
         if (dto.sex === true) setSex("male");
         else if (dto.sex === false) setSex("female");
         else setSex("unset");
@@ -162,11 +172,16 @@ export default function ProfilePage() {
       setOk(null);
       setSaving(true);
 
+      // ✅ basic normalize phone: chỉ trim (tuỳ bạn muốn filter số)
+      const phone = phoneNumber.trim();
+
       await updateUser(userId, {
         fullName: fullName.trim(),
         birthDate: birthDate ? birthDate : null,
         sex: sex === "unset" ? null : sex === "male",
-      });
+        // ✅ NEW: gửi phoneNumber lên backend
+        phoneNumber: phone === "" ? null : phone,
+      } as any);
 
       setOk("Lưu hồ sơ thành công!");
     } catch (e: any) {
@@ -231,6 +246,22 @@ export default function ProfilePage() {
                 disabled
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none"
               />
+            </div>
+
+            {/* ✅ NEW: Phone number */}
+            <div>
+              <label className="block text-sm font-bold text-slate-800">
+                Số điện thoại
+              </label>
+              <input
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="Nhập số điện thoại"
+                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-sky-200"
+              />
+              <div className="mt-1 text-xs text-slate-500">
+                Dùng để liên hệ khi đặt phòng.
+              </div>
             </div>
 
             <div>
@@ -342,7 +373,6 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                {/* ✅ chỉ hiện tối đa 5 dòng, dư thì scroll dọc */}
                 <div className="max-h-[312px] overflow-y-auto rounded-xl border border-slate-200">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-white z-10">
